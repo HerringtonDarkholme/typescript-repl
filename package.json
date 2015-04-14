@@ -1,0 +1,8 @@
+{
+  "name": "typescript-repl",
+  "version": "0.0.1",
+  "description": "a repl wrapper for typescript, and more",
+  "dependencies": {
+    "typescript": "^1.5.0-alpha"
+  }
+}
