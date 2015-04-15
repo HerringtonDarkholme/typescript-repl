@@ -73,35 +73,44 @@ var verbose = argv.v;
 var code = ''
 var codes = ''
 var versionCounter = 0
-var languageServiceHost: typescript.LanguageServiceHost = {
+var serviceHost: typescript.LanguageServiceHost = {
 	getCompilationSettings: () => ({
 		module: typescript.ModuleKind.CommonJS,
-		target: typescript.ScriptTarget.Latest
+		target: typescript.ScriptTarget.ES5
 	}),
 	getNewLine: () => code,
-	getScriptFileNames: () => (['dummy.ts']),
-	getScriptVersion: () => ('' + (versionCounter++)),
+	getScriptFileNames: () => ['dummy.ts'],
+	getScriptVersion: () => '' + (versionCounter++),
 	getScriptSnapshot: () => typescript.ScriptSnapshot.fromString(codes),
 	getCurrentDirectory: () => process.cwd(),
 	getDefaultLibFileName: (options) => typescript.getDefaultLibFilePath(options)
-
 }
+
+var service = typescript.createLanguageService(serviceHost, typescript.createDocumentRegistry())
+
+
+
 function repl(prompt, prefix) {
   'use strict';
   rl.question(prompt, function (c) {
-    code = prefix + '\n' + c;
+    code += prefix + '\n' + c;
     var openCurly = (code.match(/\{/g) || []).length;
     var closeCurly = (code.match(/\}/g) || []).length;
     var openParen = (code.match(/\(/g) || []).length;
     var closeParen = (code.match(/\)/g) || []).length;
     if (openCurly === closeCurly && openParen === closeParen) {
-      var current = typescript.transpile(code);
+      var current = typescript.transpile(prefix + '\n' + c);
+      service.getEmitOutput('dummy.ts');
+      let allDiagnostics = service.getCompilerOptionsDiagnostics()
+        .concat(service.getSyntacticDiagnostics('dummy.ts'))
+        .concat(service.getSemanticDiagnostics('dummy.ts'));
+      allDiagnostics.forEach(diagnostic => {
+        let message = typescript.flattenDiagnosticMessageText(diagnostic.messageText, '\n')
+        console.log(message);
+      })
       if (verbose) {
         console.log(current);
       }
-      // for (var i = 0; i < current.diagnostics.length; i++) {
-      //   console.log(current.diagnostics[i].message);
-      // }
       try  {
         var result = vm.runInContext(current, context);
         console.log(util.inspect(result, false, 2, true));
