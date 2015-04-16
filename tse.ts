@@ -100,8 +100,7 @@ var service = ts.createLanguageService(serviceHost, ts.createDocumentRegistry())
 function repl(prompt, prefix) {
   'use strict';
   rl.question(prompt, function (c) {
-    code += prefix + '\n' + c;
-	codes += code;
+    code = prefix + '\n' + c;
     var openCurly = (code.match(/\{/g) || []).length;
     var closeCurly = (code.match(/\}/g) || []).length;
     var openParen = (code.match(/\(/g) || []).length;
@@ -127,6 +126,8 @@ function repl(prompt, prefix) {
       try  {
         var result = vm.runInContext(current, context);
         console.log(util.inspect(result, false, 2, true));
+		versionCounter++
+		codes += code
       } catch (e) {
         console.log(e.stack);
       }
