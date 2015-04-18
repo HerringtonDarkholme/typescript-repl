@@ -6,3 +6,6 @@ Feature:
 
 * TS 1.5 support
 * Tab-completion support
+
+Install:
+  `npm install -g tse`
