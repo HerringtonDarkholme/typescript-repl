@@ -6,6 +6,7 @@ var readline = require('readline')
 var util = require('util')
 var vm = require('vm')
 
+import path = require('path')
 import ConsoleModule = require('console')
 var Console = ConsoleModule.Console
 var builtinLibs = require('repl')._builtinLibs
@@ -99,7 +100,8 @@ var defaultPrefix = '';
 var context = createContext();
 var verbose = argv.v;
 
-var codes = '/// <reference path="./typings/node.d.ts" />'
+var libPath = path.resolve(__dirname, '../typings/node.d.ts')
+var codes = `/// <reference path="${libPath}" />`
 var versionCounter = 0
 var dummyFile = '__dummy__' + Math.random() + '.ts'
 var serviceHost: ts.LanguageServiceHost = {

@@ -2,8 +2,18 @@
   "name": "typescript-repl",
   "version": "0.0.1",
   "description": "a repl wrapper for typescript, and more",
+  "bin": "./bin/tse",
   "dependencies": {
     "optimist": "^0.6.1",
     "typescript": "^1.5.0-alpha"
-  }
+  },
+  "scripts": {
+    "prepublish": "tsc -m commonjs --outdir ./bin tse.ts"
+  },
+  "keywords": [
+    "typescript",
+    "repl",
+    "command line",
+    "interpreter"
+  ]
 }
