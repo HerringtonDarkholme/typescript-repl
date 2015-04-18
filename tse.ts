@@ -135,14 +135,14 @@ function repl(prompt, prefix) {
   'use strict';
   rl.question(prompt, function (code) {
     code = prefix + '\n' + code;
-    let fallback = codes
-    codes += code
-    versionCounter++
     var openCurly = (code.match(/\{/g) || []).length;
     var closeCurly = (code.match(/\}/g) || []).length;
     var openParen = (code.match(/\(/g) || []).length;
     var closeParen = (code.match(/\)/g) || []).length;
     if (openCurly === closeCurly && openParen === closeParen) {
+      let fallback = codes
+      codes += code
+      versionCounter++
       let current = ts.transpile(code)
       let emit = service.getEmitOutput(dummyFile)
       let allDiagnostics = service.getCompilerOptionsDiagnostics()

@@ -1,7 +1,7 @@
 {
-  "name": "typescript-repl",
+  "name": "tse",
   "version": "0.0.1",
-  "description": "a repl wrapper for typescript, and more",
+  "description": "typescript enhanced, a node-like binary",
   "bin": "./bin/tse",
   "dependencies": {
     "optimist": "^0.6.1",
