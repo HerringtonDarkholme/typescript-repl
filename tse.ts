@@ -1,4 +1,5 @@
 /// <reference path='./typings/node.d.ts' />
+/// <reference path='./typings/colors.d.ts' />
 /// <reference path='./typings/typescript.d.ts' />
 
 var readline = require('readline')
@@ -10,6 +11,10 @@ var Console = ConsoleModule.Console
 var builtinLibs = require('repl')._builtinLibs
 import ts = require('typescript')
 import fs = require('fs')
+import colors = require('colors')
+colors.setTheme({
+  warn: 'red'
+})
 
 var options = require('optimist')
   .usage('A simple ts REPL.\nUsage: $0')
@@ -29,7 +34,30 @@ if (argv.h) {
 
 var rl = readline.createInterface({
   input: process.stdin,
-  output: process.stdout
+  output: process.stdout,
+  completer(line) {
+    versionCounter++
+    let originalCodes = codes
+    codes += '\n' + line
+    let completions = service.getCompletionsAtPosition(dummyFile, codes.length)
+    if (!completions) {
+      codes = originalCodes
+      return [[], line]
+    }
+    let prefix = /[A-Za-z_$]+$/.exec(line)
+    let candidates = []
+    if (prefix) {
+      let prefixStr = prefix[0]
+      candidates = completions.entries.filter((entry) => {
+        let name = entry.name
+        return name.substr(0, prefixStr.length) == prefixStr
+      }).map(entry => entry.name)
+    } else {
+      candidates = completions.entries.map(entry => entry.name)
+    }
+    codes = originalCodes
+    return [candidates, prefix ? prefix[0] : line]
+  }
 });
 
 // Much of this function is from repl.REPLServer.createContext
@@ -71,8 +99,7 @@ var defaultPrefix = '';
 var context = createContext();
 var verbose = argv.v;
 
-var code = ''
-var codes = ''
+var codes = '/// <reference path="./typings/node.d.ts" />'
 var versionCounter = 0
 var dummyFile = '__dummy__' + Math.random() + '.ts'
 var serviceHost: ts.LanguageServiceHost = {
@@ -80,14 +107,19 @@ var serviceHost: ts.LanguageServiceHost = {
 		module: ts.ModuleKind.CommonJS,
 		target: ts.ScriptTarget.ES5
 	}),
-	getNewLine: () => code,
 	getScriptFileNames: () => [dummyFile],
 	getScriptVersion: (fileName) => {
 		return fileName === dummyFile && versionCounter.toString()
 	},
 	getScriptSnapshot: (fileName) => {
-		var text = fileName === dummyFile ? codes : fs.readFileSync(fileName).toString()
-		return ts.ScriptSnapshot.fromString(text)
+    try {
+      var text = fileName === dummyFile
+        ? codes
+        : fs.readFileSync(fileName).toString()
+      return ts.ScriptSnapshot.fromString(text)
+    } catch(e) {
+
+    }
 	},
 	getCurrentDirectory: () => process.cwd(),
 	getDefaultLibFileName: (options) => ts.getDefaultLibFilePath(options)
@@ -99,35 +131,36 @@ var service = ts.createLanguageService(serviceHost, ts.createDocumentRegistry())
 
 function repl(prompt, prefix) {
   'use strict';
-  rl.question(prompt, function (c) {
-    code = prefix + '\n' + c;
+  rl.question(prompt, function (code) {
+    code = prefix + '\n' + code;
+    let fallback = codes
+    codes += code
+    versionCounter++
     var openCurly = (code.match(/\{/g) || []).length;
     var closeCurly = (code.match(/\}/g) || []).length;
     var openParen = (code.match(/\(/g) || []).length;
     var closeParen = (code.match(/\)/g) || []).length;
     if (openCurly === closeCurly && openParen === closeParen) {
-      let current = ts.transpile(prefix + '\n' + c)
+      let current = ts.transpile(code)
       let emit = service.getEmitOutput(dummyFile)
       let allDiagnostics = service.getCompilerOptionsDiagnostics()
         .concat(service.getSyntacticDiagnostics(dummyFile))
         .concat(service.getSemanticDiagnostics(dummyFile))
 
-	  console.log(emit)
       allDiagnostics.forEach(diagnostic => {
         let message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n')
-        console.log(message);
+        console.warn(message.red.bold);
       })
       if (verbose) {
-        console.log(current);
+        console.debug(current);
       }
-	  if (allDiagnostics.length) {
-		return repl(defaultPrompt, defaultPrefix);
-	  }
+      if (allDiagnostics.length) {
+        codes = fallback
+        return repl(defaultPrompt, defaultPrefix);
+      }
       try  {
         var result = vm.runInContext(current, context);
         console.log(util.inspect(result, false, 2, true));
-		versionCounter++
-		codes += code
       } catch (e) {
         console.log(e.stack);
       }
