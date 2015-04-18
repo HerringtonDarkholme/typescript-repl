@@ -15,5 +15,13 @@
     "repl",
     "command line",
     "interpreter"
-  ]
+  ],
+  "author": "Herrington Darkholme",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HerringtonDarkholme/typescript-repl.git"
+  },
+  "homepage": "https://github.com/HerringtonDarkholme/typescript-repl",
+  "bugs": "https://github.com/HerringtonDarkholme/typescript-repl/issues"
 }
