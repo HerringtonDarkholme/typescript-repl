@@ -1,5 +1,5 @@
 {
-  "name": "tse",
+  "name": "tsun",
   "version": "0.0.1",
   "description": "typescript enhanced, a node-like binary",
   "bin": "./bin/tse",

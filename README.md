@@ -1,4 +1,4 @@
-# TSE - TypeScript Enhanced
+# TSUN - TypeScript Upgraded Node
 
 It supports a node like repl for TypeScript.
 
@@ -8,4 +8,4 @@ Feature:
 * Tab-completion support
 
 Install:
-  `npm install -g tse`
+  `npm install -g tsun`
