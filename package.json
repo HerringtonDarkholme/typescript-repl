@@ -2,13 +2,14 @@
   "name": "tsun",
   "version": "0.0.1",
   "description": "typescript enhanced, a node-like binary",
-  "bin": "./bin/tse",
+  "bin": "./bin/tsun",
   "dependencies": {
     "optimist": "^0.6.1",
+    "temp": "^0.8.1",
     "typescript": "^1.5.0-alpha"
   },
   "scripts": {
-    "prepublish": "tsc -m commonjs --outdir ./bin tse.ts"
+    "prepublish": "tsc -m commonjs --outdir ./bin tsun.ts"
   },
   "keywords": [
     "typescript",
