@@ -35,6 +35,8 @@ if (argv._.length) {
   var temp = require('temp')
   temp.track()
   let tempPath = temp.mkdirSync('tsrun')
+  process.on('SIGINT',  () => temp.cleanupSync())
+  process.on('SIGTERM', () => temp.cleanupSync())
   let compileError = compile(argv._, {
       noEmitOnError: true,
       target: ts.ScriptTarget.ES5,
