@@ -1,7 +1,7 @@
 {
   "name": "tsun",
-  "version": "0.0.1",
-  "description": "typescript enhanced, a node-like binary",
+  "version": "0.0.2",
+  "description": "TSUN: a repl for TypeScript Upgraded Node",
   "bin": "./bin/tsun",
   "dependencies": {
     "optimist": "^0.6.1",
