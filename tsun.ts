@@ -34,23 +34,25 @@ var options = require('optimist')
 var argv = options.argv
 
 if (argv._.length === 1) {
-  runApp()
+  runCode()
 }
 if (argv.h) {
   options.showHelp()
   process.exit(1)
 }
 
-function runApp() {
+function runCode() {
+  // run code in temp path, and cleanup
   var temp = require('temp')
   temp.track()
+  process.on('SIGINT',  () => temp.cleanupSync())
+  process.on('SIGTERM', () => temp.cleanupSync())
+
   let tempPath = temp.mkdirSync('tsrun')
   let outDir = tempPath
   if (argv.o) {
     outDir = path.join(tempPath, argv.o)
   }
-  process.on('SIGINT',  () => temp.cleanupSync())
-  process.on('SIGTERM', () => temp.cleanupSync())
   let compileError = compile(argv._, {
       outDir,
       noEmitOnError: true,
@@ -65,7 +67,7 @@ function runApp() {
     return path.join(outDir, arg.replace(/ts$/, 'js'))
   })
   child_process.execFileSync('node', newArgv, {
-    stdio: [0, 1, 2]
+    stdio: 'inherit'
   })
   process.exit()
 }
@@ -127,17 +129,11 @@ var serviceHost: ts.LanguageServiceHost = {
     }
   },
   getCurrentDirectory: () => process.cwd(),
-  getDefaultLibFileName: (options) => path.join(__dirname, '../node_modules/typescript/bin/lib.core.d.ts')
+  getDefaultLibFileName: (options) => path.join(__dirname, '../node_modules/typescript/bin/lib.core.es6.d.ts')
 }
 
 var service = ts.createLanguageService(serviceHost, ts.createDocumentRegistry())
 
-var buffered = ''
-process.stdin.on('readable', function (ch) {
-  var chunk = process.stdin.read()
-  if (!chunk) return
-  process.stdout.write(chunk.toString().red)
-})
 var rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
@@ -205,11 +201,11 @@ function getType(name) {
   let names = service.getSourceFile(dummyFile).getNamedDeclarations().map(t => t.name)
   let nameText = names.map(t => t.getText())
   if (nameText.indexOf(name) >= 0) {
-		let info = names[nameText.indexOf(name)]
-		let quickInfo = service.getQuickInfoAtPosition(dummyFile, info.pos+1)
-		console.log(ts.displayPartsToString(quickInfo.displayParts).blue)
+    let info = names[nameText.indexOf(name)]
+    let quickInfo = service.getQuickInfoAtPosition(dummyFile, info.pos+1)
+    console.log(ts.displayPartsToString(quickInfo.displayParts).blue)
   } else {
-	  console.log(`identifier ${name} not found`.yellow)
+    console.log(`identifier ${name} not found`.yellow)
   }
 }
 
@@ -217,7 +213,54 @@ function printHelp() {
   console.log(`
 tsun repl commands
 :type identifier   print the type of an identifier
+:clear             clear all the code
+:print             print code input so far
+:help              print this manual
   `.blue)
+}
+
+function replLoop(prompt, prefix, code) {
+  code = prefix + '\n' + code;
+  var openCurly = (code.match(/\{/g) || []).length;
+  var closeCurly = (code.match(/\}/g) || []).length;
+  var openParen = (code.match(/\(/g) || []).length;
+  var closeParen = (code.match(/\)/g) || []).length;
+  if (openCurly === closeCurly && openParen === closeParen) {
+    let fallback = codes
+    codes += code
+    versionCounter++
+    let current = ts.transpile(code)
+    let emit = service.getEmitOutput(dummyFile)
+    let allDiagnostics = service.getCompilerOptionsDiagnostics()
+      .concat(service.getSyntacticDiagnostics(dummyFile))
+      .concat(service.getSemanticDiagnostics(dummyFile))
+
+    allDiagnostics.forEach(diagnostic => {
+      let message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n')
+      console.warn(message.red.bold);
+    })
+    if (verbose) {
+      console.debug(current);
+    }
+    if (allDiagnostics.length) {
+      codes = fallback
+      return repl(defaultPrompt, defaultPrefix);
+    }
+    try  {
+      var result = vm.runInContext(current, context);
+      console.log(util.inspect(result, false, 2, true));
+    } catch (e) {
+      console.log(e.stack);
+    }
+    repl(prompt, prefix)
+  } else {
+    var indentLevel = openCurly - closeCurly + openParen - closeParen;
+    var nextPrompt = '';
+    for (var i = 0; i < indentLevel; i++) {
+      nextPrompt += moreLinesPrompt;
+    }
+    repl(nextPrompt, code);
+  }
 }
 
 
@@ -234,50 +277,18 @@ function repl(prompt, prefix) {
       return repl(prompt, prefix)
     }
     if (/^:help/.test(code)) {
-		printHelp()
-		return repl(prompt, prefix)
-	}
-    code = prefix + '\n' + code;
-    var openCurly = (code.match(/\{/g) || []).length;
-    var closeCurly = (code.match(/\}/g) || []).length;
-    var openParen = (code.match(/\(/g) || []).length;
-    var closeParen = (code.match(/\)/g) || []).length;
-    if (openCurly === closeCurly && openParen === closeParen) {
-      let fallback = codes
-      codes += code
-      versionCounter++
-      let current = ts.transpile(code)
-      let emit = service.getEmitOutput(dummyFile)
-      let allDiagnostics = service.getCompilerOptionsDiagnostics()
-        .concat(service.getSyntacticDiagnostics(dummyFile))
-        .concat(service.getSemanticDiagnostics(dummyFile))
-
-      allDiagnostics.forEach(diagnostic => {
-        let message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n')
-        console.warn(message.red.bold);
-      })
-      if (verbose) {
-        console.debug(current);
-      }
-      if (allDiagnostics.length) {
-        codes = fallback
-        return repl(defaultPrompt, defaultPrefix);
-      }
-      try  {
-        var result = vm.runInContext(current, context);
-        console.log(util.inspect(result, false, 2, true));
-      } catch (e) {
-        console.log(e.stack);
-      }
-      repl(defaultPrompt, defaultPrefix);
-    } else {
-      var indentLevel = openCurly - closeCurly + openParen - closeParen;
-      var nextPrompt = '';
-      for (var i = 0; i < indentLevel; i++) {
-        nextPrompt += moreLinesPrompt;
-      }
-      repl(nextPrompt, code);
+      printHelp()
+      return repl(prompt, prefix)
     }
+    if (/^:clear/.test(code)) {
+      codes = `/// <reference path="${libPath}" />`
+      return repl(prompt, prefix)
+    }
+    if (/^:print/.test(code)) {
+      console.log(codes)
+      return repl(prompt, prefix)
+    }
+    replLoop(prompt, prefix, code)
   });
 }
 
