@@ -64,6 +64,7 @@ function linkDir(src, dest) {
     fs.symlinkSync(srcpath, destpath, 'dir')
   }
 }
+
 function compile(fileNames: string[], options: ts.CompilerOptions): number {
     var program = ts.createProgram(fileNames, options);
     var emitResult = program.emit();
@@ -117,7 +118,7 @@ var serviceHost: ts.LanguageServiceHost = {
     }
   },
   getCurrentDirectory: () => process.cwd(),
-  getDefaultLibFileName: (options) => ts.getDefaultLibFilePath(options)
+  getDefaultLibFileName: (options) => path.join(__dirname, '../node_modules/typescript/bin/lib.core.d.ts')
 }
 
 var service = ts.createLanguageService(serviceHost, ts.createDocumentRegistry())
@@ -185,12 +186,42 @@ function createContext() {
   return context;
 }
 
+function getType(name) {
+  let names = service.getSourceFile(dummyFile).getNamedDeclarations().map(t => t.name)
+  let nameText = names.map(t => t.getText())
+  if (nameText.indexOf(name) >= 0) {
+		let info = names[nameText.indexOf(name)]
+		let quickInfo = service.getQuickInfoAtPosition(dummyFile, info.pos+1)
+		console.log(ts.displayPartsToString(quickInfo.displayParts).blue)
+  } else {
+	  console.log(`identifier ${name} not found`.yellow)
+  }
+}
 
+function printHelp() {
+  console.log(`
+tsun repl commands
+:type identifier   print the type of an identifier
+  `.blue)
+}
 
 
 function repl(prompt, prefix) {
   'use strict';
   rl.question(prompt, function (code) {
+    if (/^:type/.test(code)) {
+      let identifier = code.split(' ')[1]
+      if (!identifier) {
+        console.log(':type command need names!'.red)
+        return repl(prompt, prefix)
+      }
+      getType(identifier)
+      return repl(prompt, prefix)
+    }
+    if (/^:help/.test(code)) {
+		printHelp()
+		return repl(prompt, prefix)
+	}
     code = prefix + '\n' + code;
     var openCurly = (code.match(/\{/g) || []).length;
     var closeCurly = (code.match(/\}/g) || []).length;
@@ -234,5 +265,9 @@ function repl(prompt, prefix) {
     }
   });
 }
-repl(defaultPrompt, defaultPrefix);
 
+console.log('TSUN'.blue, ': TypeScript Upgraded Node')
+console.log('type in TypeScript expression to evaluate')
+console.log('type', ':help'.blue.bold, 'for commands in repl')
+console.log('')
+repl(defaultPrompt, defaultPrefix);
