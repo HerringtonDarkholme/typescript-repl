@@ -2,19 +2,19 @@
 /// <reference path='./typings/colors.d.ts' />
 /// <reference path='./typings/typescript.d.ts' />
 
-var readline = require('readline')
-var util = require('util')
-var vm = require('vm')
-
+import readline = require('readline')
+import util = require('util')
+import vm = require('vm')
 import path = require('path')
 import ConsoleModule = require('console')
-var Console = ConsoleModule.Console
-var builtinLibs = require('repl')._builtinLibs
 import ts = require('typescript')
 import fs = require('fs')
 import colors = require('colors')
 import os = require('os')
 import child_process = require('child_process')
+
+var Console = ConsoleModule.Console
+var builtinLibs = require('repl')._builtinLibs
 
 colors.setTheme({
   warn: 'red'
@@ -25,30 +25,44 @@ var options = require('optimist')
   .alias('h', 'help')
   .describe('h', 'Print this help message')
   .alias('f', 'force')
-  .describe('f', 'Force tsi to evaluate code with ts errors.')
+  .describe('f', 'Force tsun to evaluate code with ts errors.')
   .alias('v', 'verbose')
   .describe('v', 'Print compiled javascript before evaluating.')
+  .alias('o', 'out')
+  .describe('o', 'output directory relative to temporary')
 
 var argv = options.argv
 
-if (argv._.length) {
+if (argv._.length === 1) {
+  runApp()
+}
+if (argv.h) {
+  options.showHelp()
+  process.exit(1)
+}
+
+function runApp() {
   var temp = require('temp')
   temp.track()
   let tempPath = temp.mkdirSync('tsrun')
+  let outDir = tempPath
+  if (argv.o) {
+    outDir = path.join(tempPath, argv.o)
+  }
   process.on('SIGINT',  () => temp.cleanupSync())
   process.on('SIGTERM', () => temp.cleanupSync())
   let compileError = compile(argv._, {
+      outDir,
       noEmitOnError: true,
       target: ts.ScriptTarget.ES5,
       module: ts.ModuleKind.CommonJS,
-      outDir: tempPath
   })
   if (compileError) process.exit(compileError)
   linkDir(process.cwd(), tempPath)
   // slice argv. 0: node, 1: tsun binary 2: arg
   var newArgv = process.argv.slice(2).map(arg => {
     if (!/\.ts$/.test(arg)) return arg
-    return path.join(tempPath, arg.replace(/ts$/, 'js'))
+    return path.join(outDir, arg.replace(/ts$/, 'js'))
   })
   child_process.execFileSync('node', newArgv, {
     stdio: [0, 1, 2]
@@ -84,11 +98,6 @@ function compile(fileNames: string[], options: ts.CompilerOptions): number {
 }
 
 
-if (argv.h) {
-  options.showHelp()
-  process.exit(1)
-}
-
 var defaultPrompt = '> ', moreLinesPrompt = '..';
 var defaultPrefix = '';
 var context = createContext();
@@ -123,6 +132,12 @@ var serviceHost: ts.LanguageServiceHost = {
 
 var service = ts.createLanguageService(serviceHost, ts.createDocumentRegistry())
 
+var buffered = ''
+process.stdin.on('readable', function (ch) {
+  var chunk = process.stdin.read()
+  if (!chunk) return
+  process.stdout.write(chunk.toString().red)
+})
 var rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
