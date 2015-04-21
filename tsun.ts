@@ -105,18 +105,22 @@ var defaultPrompt = '> ', moreLinesPrompt = '..';
 var context = createContext();
 var verbose = argv.v;
 
-function getInitialCommands() {
-  var libPath = path.resolve(__dirname, '../typings/node.d.ts')
-  var codes = [`/// <reference path="${libPath}" />`]
+function getDeclarationFiles() {
+  var libPaths = [path.resolve(__dirname, '../typings/node.d.ts')]
   if (argv.autolib) {
     try {
       let dirs = fs.readdirSync('typings')
       for (let dir of dirs) {
-        codes.push(`/// <reference path="${dir}" />`)
+        libPaths.push(path.join('typings', dir))
       }
     } catch(e) {
     }
   }
+  return libPaths
+}
+
+function getInitialCommands() {
+  var codes = getDeclarationFiles().map(dir => `/// <reference path="${dir}" />`)
   return codes.join('\n')
 }
 
@@ -217,15 +221,18 @@ function createContext() {
 }
 
 function getType(name) {
-  let names = service.getSourceFile(dummyFile).getNamedDeclarations().map(t => t.name)
-  let nameText = names.map(t => t.getText())
-  if (nameText.indexOf(name) >= 0) {
-    let info = names[nameText.indexOf(name)]
-    let quickInfo = service.getQuickInfoAtPosition(dummyFile, info.pos+1)
-    console.log(ts.displayPartsToString(quickInfo.displayParts).cyan)
-  } else {
-    console.log(`identifier ${name} not found`.yellow)
+  for (let file of getDeclarationFiles().concat(dummyFile)) {
+    let names = service.getSourceFile(file).getNamedDeclarations().map(t => t.name)
+    let nameText = names.map(t => t.getText())
+    if (nameText.indexOf(name) >= 0) {
+      let info = names[nameText.indexOf(name)]
+      let quickInfo = service.getQuickInfoAtPosition(file, info.pos+1)
+      console.log(`declaration in: ${file}`.cyan)
+      console.log(ts.displayPartsToString(quickInfo.displayParts).cyan)
+      return
+    }
   }
+  console.log(`identifier ${name} not found`.yellow)
 }
 
 function printHelp() {
@@ -263,8 +270,12 @@ function startEvaluate(code) {
     return repl(defaultPrompt);
   }
   let current = ts.transpile(code)
+  // workaround
+  if (code.trim().substr(0, 6) === 'import' && !current.trim()) {
+    current = code.replace(/^\s*import/, 'var')
+  }
   if (verbose) {
-    console.debug(current.green);
+    console.log(current.green);
   }
   try  {
     var result = vm.runInContext(current, context);
