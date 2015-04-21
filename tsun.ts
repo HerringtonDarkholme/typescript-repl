@@ -30,6 +30,7 @@ var options = require('optimist')
   .describe('v', 'Print compiled javascript before evaluating.')
   .alias('o', 'out')
   .describe('o', 'output directory relative to temporary')
+  .describe('autolib', 'import libs under ./typings directory')
 
 var argv = options.argv
 
@@ -105,10 +106,26 @@ var defaultPrefix = '';
 var context = createContext();
 var verbose = argv.v;
 
-var libPath = path.resolve(__dirname, '../typings/node.d.ts')
-var codes = `/// <reference path="${libPath}" />`
+function getInitialCommands() {
+  var libPath = path.resolve(__dirname, '../typings/node.d.ts')
+  var codes = [`/// <reference path="${libPath}" />`]
+  if (argv.autolib) {
+    try {
+      let dirs = fs.readdirSync('typings')
+      for (let dir of dirs) {
+        codes.push(`/// <reference path="${dir}" />`)
+      }
+    } catch(e) {
+    }
+  }
+  return codes.join('\n')
+}
+
 var versionCounter = 0
 var dummyFile = '__dummy__' + Math.random() + '.ts'
+var codes = getInitialCommands()
+var buffer = ''
+
 var serviceHost: ts.LanguageServiceHost = {
   getCompilationSettings: () => ({
     module: ts.ModuleKind.CommonJS,
@@ -141,7 +158,7 @@ var rl = readline.createInterface({
     // append new line to get completions, then revert new line
     versionCounter++
     let originalCodes = codes
-    codes += '\n' + line
+    codes += buffer + '\n' + line
     let completions = service.getCompletionsAtPosition(dummyFile, codes.length)
     if (!completions) {
       codes = originalCodes
@@ -226,6 +243,7 @@ function replLoop(prompt, prefix, code) {
   var openParen = (code.match(/\(/g) || []).length;
   var closeParen = (code.match(/\)/g) || []).length;
   if (openCurly === closeCurly && openParen === closeParen) {
+	buffer = ''
     let fallback = codes
     codes += code
     versionCounter++
@@ -252,13 +270,14 @@ function replLoop(prompt, prefix, code) {
     } catch (e) {
       console.log(e.stack);
     }
-    repl(prompt, prefix)
+    repl(defaultPrompt, defaultPrefix)
   } else {
     var indentLevel = openCurly - closeCurly + openParen - closeParen;
     var nextPrompt = '';
     for (var i = 0; i < indentLevel; i++) {
       nextPrompt += moreLinesPrompt;
     }
+	buffer = code
     repl(nextPrompt, code);
   }
 }
@@ -281,7 +300,7 @@ function repl(prompt, prefix) {
       return repl(prompt, prefix)
     }
     if (/^:clear/.test(code)) {
-      codes = `/// <reference path="${libPath}" />`
+      codes = getInitialCommands()
       return repl(prompt, prefix)
     }
     if (/^:print/.test(code)) {
