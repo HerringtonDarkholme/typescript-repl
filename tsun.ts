@@ -30,7 +30,8 @@ var options = require('optimist')
   .describe('v', 'Print compiled javascript before evaluating.')
   .alias('o', 'out')
   .describe('o', 'output directory relative to temporary')
-  .describe('autolib', 'import libs under ./typings directory')
+  .alias('a', 'autolib')
+  .describe('a', 'import libs under ./typings directory')
 
 var argv = options.argv
 
@@ -101,7 +102,6 @@ function compile(fileNames: string[], options: ts.CompilerOptions): number {
 
 
 var defaultPrompt = '> ', moreLinesPrompt = '..';
-var defaultPrefix = '';
 var context = createContext();
 var verbose = argv.v;
 
@@ -124,6 +124,7 @@ var versionCounter = 0
 var dummyFile = '__dummy__' + Math.random() + '.ts'
 var codes = getInitialCommands()
 var buffer = ''
+var rl = createReadLine()
 
 var serviceHost: ts.LanguageServiceHost = {
   getCompilationSettings: () => ({
@@ -180,8 +181,6 @@ function createReadLine() {
     }
   })
 }
-
-var rl = createReadLine()
 
 // Much of this function is from repl.REPLServer.createContext
 function createContext() {
@@ -258,14 +257,14 @@ function startEvaluate(code) {
   let fallback = codes
   codes += code
   versionCounter++
-  let current = ts.transpile(code)
   let allDiagnostics = getDiagnostics()
-  if (verbose) {
-    console.debug(current.green);
-  }
   if (allDiagnostics.length) {
     codes = fallback
-    return repl(defaultPrompt, defaultPrefix);
+    return repl(defaultPrompt);
+  }
+  let current = ts.transpile(code)
+  if (verbose) {
+    console.debug(current.green);
   }
   try  {
     var result = vm.runInContext(current, context);
@@ -276,23 +275,32 @@ function startEvaluate(code) {
 
 }
 
-function replLoop(prompt, prefix, code) {
-  code = prefix + '\n' + code;
+function waitForMoreLines(code: string, indentLevel: number) {
+  if (/\n{2}$/.test(code)) {
+    console.log('You typed two blank lines! start new command'.yellow)
+    buffer = ''
+    return repl(defaultPrompt)
+  }
+  var nextPrompt = '';
+  for (var i = 0; i < indentLevel; i++) {
+    nextPrompt += moreLinesPrompt;
+  }
+  buffer = code
+  repl(nextPrompt);
+}
+
+function replLoop(prompt, code) {
+  code = buffer + '\n' + code;
   var openCurly = (code.match(/\{/g) || []).length;
   var closeCurly = (code.match(/\}/g) || []).length;
   var openParen = (code.match(/\(/g) || []).length;
   var closeParen = (code.match(/\)/g) || []).length;
   if (openCurly === closeCurly && openParen === closeParen) {
     startEvaluate(code)
-    repl(defaultPrompt, defaultPrefix)
+    repl(defaultPrompt)
   } else {
-    var indentLevel = openCurly - closeCurly + openParen - closeParen;
-    var nextPrompt = '';
-    for (var i = 0; i < indentLevel; i++) {
-      nextPrompt += moreLinesPrompt;
-    }
-    buffer = code
-    repl(nextPrompt, code);
+    let indentLevel = openCurly - closeCurly + openParen - closeParen;
+    waitForMoreLines(code, indentLevel)
   }
 }
 
@@ -309,39 +317,41 @@ function enterPasteMode() {
     rl.removeListener('line', addLine)
     startEvaluate(buffer)
     rl = createReadLine()
-    repl(defaultPrompt, defaultPrefix)
+    repl(defaultPrompt)
   })
 }
 
-function repl(prompt, prefix) {
+// main loop
+function repl(prompt) {
   'use strict';
   rl.question(prompt, function (code) {
     if (/^:type/.test(code)) {
       let identifier = code.split(' ')[1]
       if (!identifier) {
         console.log(':type command need names!'.red)
-        return repl(prompt, prefix)
+        return repl(prompt)
       }
       getType(identifier)
-      return repl(prompt, prefix)
+      return repl(prompt)
     }
     if (/^:help/.test(code)) {
       printHelp()
-      return repl(prompt, prefix)
+      return repl(prompt)
     }
     if (/^:clear/.test(code)) {
       codes = getInitialCommands()
       buffer = ''
-      return repl(defaultPrompt, defaultPrefix)
+      context = createContext()
+      return repl(defaultPrompt)
     }
     if (/^:print/.test(code)) {
       console.log(codes)
-      return repl(prompt, prefix)
+      return repl(prompt)
     }
-    if (/^:paste/.test(code) && !prefix) {
+    if (/^:paste/.test(code) && !buffer) {
       return enterPasteMode()
     }
-    replLoop(prompt, prefix, code)
+    replLoop(prompt, code)
   });
 }
 
@@ -349,4 +359,4 @@ console.log('TSUN'.blue, ': TypeScript Upgraded Node')
 console.log('type in TypeScript expression to evaluate')
 console.log('type', ':help'.blue.bold, 'for commands in repl')
 console.log('')
-repl(defaultPrompt, defaultPrefix);
+repl(defaultPrompt);
