@@ -89,7 +89,6 @@ function compile(fileNames: string[], options: ts.CompilerOptions): number {
     var allDiagnostics = ts.getPreEmitDiagnostics(program).concat(emitResult.diagnostics);
 
     allDiagnostics.forEach(diagnostic => {
-      console.log(diagnostic)
       var message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n');
       if (!diagnostic.file) return console.log(message)
       var { line, character } = diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start);
@@ -151,34 +150,38 @@ var serviceHost: ts.LanguageServiceHost = {
 
 var service = ts.createLanguageService(serviceHost, ts.createDocumentRegistry())
 
-var rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-  completer(line) {
-    // append new line to get completions, then revert new line
-    versionCounter++
-    let originalCodes = codes
-    codes += buffer + '\n' + line
-    let completions = service.getCompletionsAtPosition(dummyFile, codes.length)
-    if (!completions) {
+function createReadLine() {
+  return readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+    completer(line) {
+      // append new line to get completions, then revert new line
+      versionCounter++
+      let originalCodes = codes
+      codes += buffer + '\n' + line
+      let completions = service.getCompletionsAtPosition(dummyFile, codes.length)
+      if (!completions) {
+        codes = originalCodes
+        return [[], line]
+      }
+      let prefix = /[A-Za-z_$]+$/.exec(line)
+      let candidates = []
+      if (prefix) {
+        let prefixStr = prefix[0]
+        candidates = completions.entries.filter((entry) => {
+          let name = entry.name
+          return name.substr(0, prefixStr.length) == prefixStr
+        }).map(entry => entry.name)
+      } else {
+        candidates = completions.entries.map(entry => entry.name)
+      }
       codes = originalCodes
-      return [[], line]
+      return [candidates, prefix ? prefix[0] : line]
     }
-    let prefix = /[A-Za-z_$]+$/.exec(line)
-    let candidates = []
-    if (prefix) {
-      let prefixStr = prefix[0]
-      candidates = completions.entries.filter((entry) => {
-        let name = entry.name
-        return name.substr(0, prefixStr.length) == prefixStr
-      }).map(entry => entry.name)
-    } else {
-      candidates = completions.entries.map(entry => entry.name)
-    }
-    codes = originalCodes
-    return [candidates, prefix ? prefix[0] : line]
-  }
-});
+  })
+}
+
+var rl = createReadLine()
 
 // Much of this function is from repl.REPLServer.createContext
 function createContext() {
@@ -220,7 +223,7 @@ function getType(name) {
   if (nameText.indexOf(name) >= 0) {
     let info = names[nameText.indexOf(name)]
     let quickInfo = service.getQuickInfoAtPosition(dummyFile, info.pos+1)
-    console.log(ts.displayPartsToString(quickInfo.displayParts).blue)
+    console.log(ts.displayPartsToString(quickInfo.displayParts).cyan)
   } else {
     console.log(`identifier ${name} not found`.yellow)
   }
@@ -233,7 +236,44 @@ tsun repl commands
 :clear             clear all the code
 :print             print code input so far
 :help              print this manual
+:paste             enter paste mode
   `.blue)
+}
+
+function getDiagnostics() {
+  let emit = service.getEmitOutput(dummyFile)
+  let allDiagnostics = service.getCompilerOptionsDiagnostics()
+    .concat(service.getSyntacticDiagnostics(dummyFile))
+    .concat(service.getSemanticDiagnostics(dummyFile))
+
+  allDiagnostics.forEach(diagnostic => {
+    let message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n')
+    console.warn(message.red.bold)
+  })
+  return allDiagnostics
+}
+
+function startEvaluate(code) {
+  buffer = ''
+  let fallback = codes
+  codes += code
+  versionCounter++
+  let current = ts.transpile(code)
+  let allDiagnostics = getDiagnostics()
+  if (verbose) {
+    console.debug(current.green);
+  }
+  if (allDiagnostics.length) {
+    codes = fallback
+    return repl(defaultPrompt, defaultPrefix);
+  }
+  try  {
+    var result = vm.runInContext(current, context);
+    console.log(util.inspect(result, false, 2, true));
+  } catch (e) {
+    console.log(e.stack);
+  }
+
 }
 
 function replLoop(prompt, prefix, code) {
@@ -243,33 +283,7 @@ function replLoop(prompt, prefix, code) {
   var openParen = (code.match(/\(/g) || []).length;
   var closeParen = (code.match(/\)/g) || []).length;
   if (openCurly === closeCurly && openParen === closeParen) {
-	buffer = ''
-    let fallback = codes
-    codes += code
-    versionCounter++
-    let current = ts.transpile(code)
-    let emit = service.getEmitOutput(dummyFile)
-    let allDiagnostics = service.getCompilerOptionsDiagnostics()
-      .concat(service.getSyntacticDiagnostics(dummyFile))
-      .concat(service.getSemanticDiagnostics(dummyFile))
-
-    allDiagnostics.forEach(diagnostic => {
-      let message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n')
-      console.warn(message.red.bold);
-    })
-    if (verbose) {
-      console.debug(current);
-    }
-    if (allDiagnostics.length) {
-      codes = fallback
-      return repl(defaultPrompt, defaultPrefix);
-    }
-    try  {
-      var result = vm.runInContext(current, context);
-      console.log(util.inspect(result, false, 2, true));
-    } catch (e) {
-      console.log(e.stack);
-    }
+    startEvaluate(code)
     repl(defaultPrompt, defaultPrefix)
   } else {
     var indentLevel = openCurly - closeCurly + openParen - closeParen;
@@ -277,11 +291,27 @@ function replLoop(prompt, prefix, code) {
     for (var i = 0; i < indentLevel; i++) {
       nextPrompt += moreLinesPrompt;
     }
-	buffer = code
+    buffer = code
     repl(nextPrompt, code);
   }
 }
 
+function addLine(line) {
+  buffer += '\n' + line
+}
+
+function enterPasteMode() {
+  console.log('// entering paste mode, press ctrl-d to evaluate'.cyan)
+  console.log('')
+  rl.on('line', addLine)
+  rl.once('close', (d) => {
+    console.log('evaluating...'.cyan)
+    rl.removeListener('line', addLine)
+    startEvaluate(buffer)
+    rl = createReadLine()
+    repl(defaultPrompt, defaultPrefix)
+  })
+}
 
 function repl(prompt, prefix) {
   'use strict';
@@ -301,11 +331,15 @@ function repl(prompt, prefix) {
     }
     if (/^:clear/.test(code)) {
       codes = getInitialCommands()
-      return repl(prompt, prefix)
+      buffer = ''
+      return repl(defaultPrompt, defaultPrefix)
     }
     if (/^:print/.test(code)) {
       console.log(codes)
       return repl(prompt, prefix)
+    }
+    if (/^:paste/.test(code) && !prefix) {
+      return enterPasteMode()
     }
     replLoop(prompt, prefix, code)
   });
