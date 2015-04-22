@@ -41,10 +41,10 @@ Tab-completion
 ![Tab Completion](https://raw.githubusercontent.com/HerringtonDarkholme/typescript-repl/master/screenshot/completion.png)
 
 Multiple Line Editing
+
 ![Multiple Line Editing](https://raw.githubusercontent.com/HerringtonDarkholme/typescript-repl/master/screenshot/block.png)
 
 Paste Mode
-
 ![Paste Mode](https://raw.githubusercontent.com/HerringtonDarkholme/typescript-repl/master/screenshot/paste.png)
 
 Definition Lookup
