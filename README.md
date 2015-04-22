@@ -40,8 +40,7 @@ ScreenShots:
 Tab-completion
 ![Tab Completion](https://raw.githubusercontent.com/HerringtonDarkholme/typescript-repl/master/screenshot/completion.png)
 
-Multiple Line Editing
-
+Multiple Line Editing, typing double blank lines will escape from Multiple line mode
 ![Multiple Line Editing](https://raw.githubusercontent.com/HerringtonDarkholme/typescript-repl/master/screenshot/block.png)
 
 Paste Mode
