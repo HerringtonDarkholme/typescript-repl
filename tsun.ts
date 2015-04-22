@@ -227,69 +227,68 @@ function createContext() {
 }
 
 var getDeclarations = (function() {
-	var declarations: {[a: string]: ts.DeclarationName[]} = {}
-	for (let file of getDeclarationFiles()) {
-		declarations[file] = service.getSourceFile(file).getNamedDeclarations().map(t => t.name)
-	}
-	return function(cached: boolean = false) {
-		if (!cached) {
-		  declarations[dummyFile] = service.getSourceFile(dummyFile).getNamedDeclarations().map(t => t.name)
-		}
-		return declarations
-	}
+  var declarations: {[a: string]: ts.DeclarationName[]} = {}
+  for (let file of getDeclarationFiles()) {
+    declarations[file] = service.getSourceFile(file).getNamedDeclarations().map(t => t.name)
+  }
+  return function(cached: boolean = false) {
+    if (!cached) {
+      declarations[dummyFile] = service.getSourceFile(dummyFile).getNamedDeclarations().map(t => t.name)
+    }
+    return declarations
+  }
 })()
 
 
-function getMemberInfo(member, file, parentInfo): string[] {
+function getMemberInfo(member, file, parentDeclaration): string {
   let pos = member.getEnd()
   let quickInfo = service.getQuickInfoAtPosition(file, pos)
-  if (quickInfo) return [ts.displayPartsToString(quickInfo.displayParts)]
+  if (quickInfo) return ts.displayPartsToString(quickInfo.displayParts)
   // DeclarationName includes Identifier which does not have name and will not go here
-  let name = member.name.getText()
+  let name = member.name && member.name.getText()
+  if (!name) return member.getText()
   let declarations = getDeclarations(true)[file].filter(d => d.getText() === name)
   for (let decl of declarations) {
-	let d: any = decl
-	if (parentInfo.parent.name.getText() == d.parent.parent.name.getText()) {
-		let quickInfo = service.getQuickInfoAtPosition(file, d.getEnd())
-		let display = removeParent(quickInfo, parentInfo)
-		return [ts.displayPartsToString(display)]
-	}
+    let d: any = decl
+    if (parentDeclaration.parent.name.getText() == d.parent.parent.name.getText()) {
+      let quickInfo = service.getQuickInfoAtPosition(file, d.getEnd())
+      return ts.displayPartsToString(quickInfo.displayParts)
+    }
   }
-  return []
+  return member.getText()
 }
 
-function removeParent(quickInfo, info) {
-	let display = quickInfo.displayParts.filter(k => ['moduleName', 'interfaceName', 'className'].indexOf(k.kind) == -1)
-	return quickInfo.displayParts
-}
-
-function getTypeInfo(info: ts.Node, file: string, detailed: boolean): string[] {
-  let pos = info.getEnd()
-  let ret = detailed ? [`declaration in: ${file}`] : []
+function getTypeInfo(decl: ts.Node, file: string, detailed: boolean): string[] {
+  let pos = decl.getEnd()
+  let ret = [`declaration in: ${file}`]
   let quickInfo = service.getQuickInfoAtPosition(file, pos)
   ret.push(ts.displayPartsToString(quickInfo.displayParts))
   if (!detailed) return ret
+  let parentName = ret[1].split(' ')[1]
   let symbolType = quickInfo.displayParts[0].text
   if ( symbolType === 'interface' || symbolType === 'class') {
-	 let classLikeDeclaration = <ts.ClassLikeDeclaration>info.parent
-	 for (let member of classLikeDeclaration.members) {
-		ret = ret.concat(getMemberInfo(member, file, info))
-	 }
+    let classLikeDeclaration = <ts.ClassLikeDeclaration>decl.parent
+    for (let member of classLikeDeclaration.members) {
+      let memberInfo = getMemberInfo(member, file, decl).split('\n').map(mInfo => {
+        mInfo = mInfo.replace(new RegExp(parentName + '\\.', 'g'), '')
+        return '    ' + mInfo
+      })
+      ret.push(memberInfo.join('\n'))
+    }
   }
   return ret
 
 }
 
-function getType(name) {
+function getType(name, detailed) {
   let declarations = getDeclarations()
   for (let file in declarations) {
     let names = declarations[file]
     let nameText = names.map(t => t.getText())
-	if (file === dummyFile) console.log(nameText)
     if (nameText.indexOf(name) >= 0) {
-      let info = names[nameText.indexOf(name)]
-	  let infoString = getTypeInfo(info, file, true)
-	  console.log(infoString.join('\n').cyan)
+      let decl = names[nameText.indexOf(name)]
+      let infoString = getTypeInfo(decl, file, detailed)
+      console.log(infoString.join('\n').cyan)
       return
     }
   }
@@ -299,13 +298,14 @@ function getType(name) {
 function printHelp() {
   console.log(`
 tsun repl commands
-:type identifier   print the type of an identifier
+:type symbol       print the type of an identifier
+:detail symbol     print details identifier
 :clear             clear all the code
 :print             print code input so far
 :help              print this manual
 :paste             enter paste mode`.blue)
   if (argv.dere) {
-	console.log(':baka              Who would like some pervert like you, baka~'.blue)
+  console.log(':baka              Who would like some pervert like you, baka~'.blue)
   }
 }
 
@@ -330,11 +330,11 @@ function startEvaluate(code) {
   let allDiagnostics = getDiagnostics()
   if (allDiagnostics.length) {
     codes = fallback
-	if (defaultPrompt != '> ') {
-		console.log('')
-		console.log(defaultPrompt, 'URUSAI URUSAI URUSAI'.magenta)
-		console.log('')
-	}
+  if (defaultPrompt != '> ') {
+    console.log('')
+    console.log(defaultPrompt, 'URUSAI URUSAI URUSAI'.magenta)
+    console.log('')
+  }
     return repl(defaultPrompt);
   }
   let current = ts.transpile(code)
@@ -404,13 +404,13 @@ function enterPasteMode() {
 function repl(prompt) {
   'use strict';
   rl.question(prompt, function (code) {
-    if (/^:type/.test(code)) {
+    if (/^:(type|detail)/.test(code)) {
       let identifier = code.split(' ')[1]
       if (!identifier) {
-        console.log(':type command need names!'.red)
+        console.log(':type|detail command need names!'.red)
         return repl(prompt)
       }
-      getType(identifier)
+      getType(identifier, code.indexOf('detail') === 1)
       return repl(prompt)
     }
     if (/^:help/.test(code)) {
@@ -432,7 +432,7 @@ function repl(prompt) {
     }
     if (argv.dere && /^:baka/.test(code)) {
       defaultPrompt   = 'ξ(ﾟ⊿ﾟ)ξ> '
-	  moreLinesPrompt = 'ζ(///*ζ) ';
+      moreLinesPrompt = 'ζ(///*ζ) ';
       return repl(defaultPrompt)
     }
     replLoop(prompt, code)
