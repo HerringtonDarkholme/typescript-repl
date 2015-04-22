@@ -226,15 +226,70 @@ function createContext() {
   return context;
 }
 
+var getDeclarations = (function() {
+	var declarations: {[a: string]: ts.DeclarationName[]} = {}
+	for (let file of getDeclarationFiles()) {
+		declarations[file] = service.getSourceFile(file).getNamedDeclarations().map(t => t.name)
+	}
+	return function(cached: boolean = false) {
+		if (!cached) {
+		  declarations[dummyFile] = service.getSourceFile(dummyFile).getNamedDeclarations().map(t => t.name)
+		}
+		return declarations
+	}
+})()
+
+
+function getMemberInfo(member, file, parentInfo): string[] {
+  let pos = member.getEnd()
+  let quickInfo = service.getQuickInfoAtPosition(file, pos)
+  if (quickInfo) return [ts.displayPartsToString(quickInfo.displayParts)]
+  // DeclarationName includes Identifier which does not have name and will not go here
+  let name = member.name.getText()
+  let declarations = getDeclarations(true)[file].filter(d => d.getText() === name)
+  for (let decl of declarations) {
+	let d: any = decl
+	if (parentInfo.parent.name.getText() == d.parent.parent.name.getText()) {
+		let quickInfo = service.getQuickInfoAtPosition(file, d.getEnd())
+		let display = removeParent(quickInfo, parentInfo)
+		return [ts.displayPartsToString(display)]
+	}
+  }
+  return []
+}
+
+function removeParent(quickInfo, info) {
+	let display = quickInfo.displayParts.filter(k => ['moduleName', 'interfaceName', 'className'].indexOf(k.kind) == -1)
+	return quickInfo.displayParts
+}
+
+function getTypeInfo(info: ts.Node, file: string, detailed: boolean): string[] {
+  let pos = info.getEnd()
+  let ret = detailed ? [`declaration in: ${file}`] : []
+  let quickInfo = service.getQuickInfoAtPosition(file, pos)
+  ret.push(ts.displayPartsToString(quickInfo.displayParts))
+  if (!detailed) return ret
+  let symbolType = quickInfo.displayParts[0].text
+  if ( symbolType === 'interface' || symbolType === 'class') {
+	 let classLikeDeclaration = <ts.ClassLikeDeclaration>info.parent
+	 for (let member of classLikeDeclaration.members) {
+		ret = ret.concat(getMemberInfo(member, file, info))
+	 }
+  }
+  return ret
+
+}
+
 function getType(name) {
-  for (let file of getDeclarationFiles().concat(dummyFile)) {
-    let names = service.getSourceFile(file).getNamedDeclarations().map(t => t.name)
+  let declarations = getDeclarations()
+  for (let file in declarations) {
+    let names = declarations[file]
     let nameText = names.map(t => t.getText())
+	if (file === dummyFile) console.log(nameText)
     if (nameText.indexOf(name) >= 0) {
       let info = names[nameText.indexOf(name)]
-      let quickInfo = service.getQuickInfoAtPosition(file, info.pos+1)
-      console.log(`declaration in: ${file}`.cyan)
-      console.log(ts.displayPartsToString(quickInfo.displayParts).cyan)
+	  let infoString = getTypeInfo(info, file, true)
+	  console.log(infoString.join('\n').cyan)
       return
     }
   }
