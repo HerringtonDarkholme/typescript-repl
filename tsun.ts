@@ -22,7 +22,7 @@ colors.setTheme({
 })
 
 var options = require('optimist')
-  .usage('A simple ts REPL.\nUsage: $0')
+  .usage('A TypeScript REPL.\nUsage: $0')
   .alias('h', 'help')
   .describe('h', 'Print this help message')
   .alias('f', 'force')
@@ -390,13 +390,15 @@ function addLine(line) {
 function enterPasteMode() {
   console.log('// entering paste mode, press ctrl-d to evaluate'.cyan)
   console.log('')
+  let oldPrompt = defaultPrompt
+  rl.setPrompt('')
   rl.on('line', addLine)
   rl.once('close', (d) => {
     console.log('evaluating...'.cyan)
     rl.removeListener('line', addLine)
     startEvaluate(buffer)
     rl = createReadLine()
-    repl(defaultPrompt)
+    repl(defaultPrompt = oldPrompt)
   })
 }
 
