@@ -36,9 +36,17 @@ Custom definition files and JavaScript library support will be added in next rel
 
 ScreenShots:
 ===
+
+Tab-completion
 ![Tab Completion](https://raw.githubusercontent.com/HerringtonDarkholme/typescript-repl/master/screenshot/completion.png)
+
+Multiple Line Editing
 ![Multiple Line Editing](https://raw.githubusercontent.com/HerringtonDarkholme/typescript-repl/master/screenshot/block.png)
+
+Paste Mode
 ![Paste Mode](https://raw.githubusercontent.com/HerringtonDarkholme/typescript-repl/master/screenshot/paste.png)
+
+Definition Lookup
 ![Definition Lookup](https://raw.githubusercontent.com/HerringtonDarkholme/typescript-repl/master/screenshot/type.png)
 
 And there is more for your exploration...
