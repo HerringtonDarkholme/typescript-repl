@@ -16,6 +16,7 @@ import child_process = require('child_process')
 var Console = ConsoleModule.Console
 var builtinLibs = require('repl')._builtinLibs
 
+// workaround for ts import
 colors.setTheme({
   warn: 'red'
 })
@@ -30,8 +31,9 @@ var options = require('optimist')
   .describe('v', 'Print compiled javascript before evaluating.')
   .alias('o', 'out')
   .describe('o', 'output directory relative to temporary')
-  .alias('a', 'autolib')
-  .describe('a', 'import libs under ./typings directory')
+  .alias('a', 'autoref')
+  .describe('a', 'add reference of definition under ./typings directory')
+  .describe('dere', "I-its's not like I'm an option so DON'T GET THE WRONG IDEA!")
 
 var argv = options.argv
 
@@ -101,13 +103,17 @@ function compile(fileNames: string[], options: ts.CompilerOptions): number {
 }
 
 
+/**
+ * interpreter start
+ */
+
 var defaultPrompt = '> ', moreLinesPrompt = '..';
 var context = createContext();
 var verbose = argv.v;
 
 function getDeclarationFiles() {
   var libPaths = [path.resolve(__dirname, '../typings/node.d.ts')]
-  if (argv.autolib) {
+  if (argv.autoref) {
     try {
       let dirs = fs.readdirSync('typings')
       for (let dir of dirs) {
@@ -125,7 +131,7 @@ function getInitialCommands() {
 }
 
 var versionCounter = 0
-var dummyFile = '__dummy__' + Math.random() + '.ts'
+var dummyFile = 'TSUN.repl.generated.ts'
 var codes = getInitialCommands()
 var buffer = ''
 var rl = createReadLine()
@@ -242,8 +248,10 @@ tsun repl commands
 :clear             clear all the code
 :print             print code input so far
 :help              print this manual
-:paste             enter paste mode
-  `.blue)
+:paste             enter paste mode`.blue)
+  if (argv.dere) {
+	console.log(':baka              Who would like some pervert like you, baka~'.blue)
+  }
 }
 
 function getDiagnostics() {
@@ -267,6 +275,11 @@ function startEvaluate(code) {
   let allDiagnostics = getDiagnostics()
   if (allDiagnostics.length) {
     codes = fallback
+	if (defaultPrompt != '> ') {
+		console.log('')
+		console.log(defaultPrompt, 'URUSAI URUSAI URUSAI'.magenta)
+		console.log('')
+	}
     return repl(defaultPrompt);
   }
   let current = ts.transpile(code)
@@ -362,12 +375,23 @@ function repl(prompt) {
     if (/^:paste/.test(code) && !buffer) {
       return enterPasteMode()
     }
+    if (argv.dere && /^:baka/.test(code)) {
+      defaultPrompt   = 'ξ(ﾟ⊿ﾟ)ξ> '
+	  moreLinesPrompt = 'ζ(///*ζ) ';
+      return repl(defaultPrompt)
+    }
     replLoop(prompt, code)
   });
 }
 
-console.log('TSUN'.blue, ': TypeScript Upgraded Node')
-console.log('type in TypeScript expression to evaluate')
-console.log('type', ':help'.blue.bold, 'for commands in repl')
+if (!argv.dere) {
+  console.log('TSUN'.blue, ': TypeScript Upgraded Node')
+  console.log('type in TypeScript expression to evaluate')
+  console.log('type', ':help'.blue.bold, 'for commands in repl')
+} else {
+  console.log('TSUN'.magenta, " I'm- I'm not making this repl because I like you or anything!")
+  console.log("don'... don't type ", ':help'.magenta.bold, ', okay? Idiot!')
+}
+
 console.log('')
 repl(defaultPrompt);
