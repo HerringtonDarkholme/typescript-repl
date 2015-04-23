@@ -228,7 +228,8 @@ function createContext() {
 
 var getDeclarations = (function() {
   var declarations: {[a: string]: ts.DeclarationName[]} = {}
-  for (let file of getDeclarationFiles()) {
+  let declFiles = getDeclarationFiles().concat(path.join(__dirname, '../node_modules/typescript/bin/lib.core.es6.d.ts'))
+  for (let file of declFiles) {
     declarations[file] = service.getSourceFile(file).getNamedDeclarations().map(t => t.name)
   }
   return function(cached: boolean = false) {
