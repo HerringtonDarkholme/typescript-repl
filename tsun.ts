@@ -170,6 +170,11 @@ function createReadLine() {
       versionCounter++
       let originalCodes = codes
       codes += buffer + '\n' + line
+      if (':' === line[0]) {
+        let candidates = ['type', 'detail', 'source', 'paste', 'clear', 'print', 'help']
+		candidates = candidates.map(c => ':' + c).filter(c => c.indexOf(line) >= 0)
+        return [candidates, line.trim()]
+      }
       let completions = service.getCompletionsAtPosition(dummyFile, codes.length)
       if (!completions) {
         codes = originalCodes
@@ -281,6 +286,41 @@ function getTypeInfo(decl: ts.Node, file: string, detailed: boolean): string[] {
 
 }
 
+function getSource(name) {
+  let declarations = getDeclarations()
+  for (let file in declarations) {
+    let names = declarations[file]
+    let nameText = names.map(t => t.getText())
+    if (nameText.indexOf(name) >= 0) {
+      let decl = names[nameText.indexOf(name)]
+      let pager = process.env.PAGER
+      let text = decl.parent.getFullText()
+      if (!pager || text.split('\n').length < 24) {
+        console.log(text)
+        repl(defaultPrompt)
+        return
+       }
+       process.stdin.pause()
+       var tty = require('tty')
+       tty.setRawMode(false)
+       var temp = require('temp')
+       let tempFile = temp.openSync('dummyFile' + Math.random())
+       fs.writeFileSync(tempFile.path, text)
+       let display = child_process.spawn('less', [tempFile.path], {
+         'stdio': [0, 1, 2]
+       })
+       display.on('exit', function() {
+         temp.cleanupSync()
+         tty.setRawMode(true)
+         process.stdin.resume()
+         repl(defaultPrompt)
+       })
+       return
+    }
+  }
+  console.log(`identifier ${name} not found`.yellow)
+}
+
 function getType(name, detailed) {
   let declarations = getDeclarations()
   for (let file in declarations) {
@@ -300,7 +340,8 @@ function printHelp() {
   console.log(`
 tsun repl commands
 :type symbol       print the type of an identifier
-:detail symbol     print details identifier
+:detail symbol     print details of identifier
+:source symbol     print source of identifier
 :clear             clear all the code
 :print             print code input so far
 :help              print this manual
@@ -415,6 +456,15 @@ function repl(prompt) {
       }
       getType(identifier, code.indexOf('detail') === 1)
       return repl(prompt)
+    }
+    if (/^:source/.test(code)) {
+      let identifier = code.split(' ')[1]
+      if (!identifier) {
+        console.log(':source command need names!'.red)
+        return repl(prompt)
+      }
+      getSource(identifier)
+      return
     }
     if (/^:help/.test(code)) {
       printHelp()
