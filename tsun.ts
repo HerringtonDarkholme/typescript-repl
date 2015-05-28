@@ -235,7 +235,12 @@ var getDeclarations = (function() {
   var declarations: {[a: string]: ts.DeclarationName[]} = {}
   let declFiles = getDeclarationFiles().concat(path.join(__dirname, '../node_modules/typescript/bin/lib.core.es6.d.ts'))
   for (let file of declFiles) {
-    declarations[file] = service.getSourceFile(file).getNamedDeclarations().map(t => t.name)
+    var fileDeclarations = [];
+    let namedDeclarations = service.getSourceFile(file).getNamedDeclarations();
+    for(let i = 0; i < namedDeclarations.length; i++) {
+      fileDeclarations.push(namedDeclarations[i]);
+    }
+    declarations[file] = fileDeclarations;
   }
   return function(cached: boolean = false) {
     if (!cached) {
