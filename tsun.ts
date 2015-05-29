@@ -1,6 +1,6 @@
 /// <reference path='./typings/node.d.ts' />
 /// <reference path='./typings/colors.d.ts' />
-/// <reference path='./typings/typescript.d.ts' />
+/// <reference path='./node_modules/typescript/bin/typescript.d.ts' />
 
 import readline = require('readline')
 import util = require('util')
@@ -231,15 +231,26 @@ function createContext() {
   return context;
 }
 
+// private api hacks
+function collectDeclaration(sourceFile): any {
+	let decls = sourceFile.getNamedDeclarations()
+	var ret = {}
+	for (let decl in decls) {
+		ret[decl] = decls[decl].map(t => t.name)
+	}
+	return ret
+}
+
 var getDeclarations = (function() {
-  var declarations: {[a: string]: ts.DeclarationName[]} = {}
+  var declarations: {[fileName: string]: {[name: string]: ts.DeclarationName[]}} = {}
   let declFiles = getDeclarationFiles().concat(path.join(__dirname, '../node_modules/typescript/bin/lib.core.es6.d.ts'))
   for (let file of declFiles) {
-    declarations[file] = service.getSourceFile(file).getNamedDeclarations().map(t => t.name)
+    declarations[file] = collectDeclaration(service.getSourceFile(file))
+    console.log(declarations[file])
   }
   return function(cached: boolean = false) {
     if (!cached) {
-      declarations[dummyFile] = service.getSourceFile(dummyFile).getNamedDeclarations().map(t => t.name)
+		declarations[dummyFile] = collectDeclaration(service.getSourceFile(dummyFile))
     }
     return declarations
   }
@@ -247,13 +258,14 @@ var getDeclarations = (function() {
 
 
 function getMemberInfo(member, file, parentDeclaration): string {
-  let pos = member.getEnd()
+  // member info is stored as the first
+  let pos = member.getStart()
   let quickInfo = service.getQuickInfoAtPosition(file, pos)
   if (quickInfo) return ts.displayPartsToString(quickInfo.displayParts)
   // DeclarationName includes Identifier which does not have name and will not go here
   let name = member.name && member.name.getText()
   if (!name) return member.getText()
-  let declarations = getDeclarations(true)[file].filter(d => d.getText() === name)
+  let declarations = getDeclarations(true)[file][name]
   for (let decl of declarations) {
     let d: any = decl
     if (parentDeclaration.parent.name.getText() == d.parent.parent.name.getText()) {
@@ -265,6 +277,7 @@ function getMemberInfo(member, file, parentDeclaration): string {
 }
 
 function getTypeInfo(decl: ts.Node, file: string, detailed: boolean): string[] {
+  // getStart will count comment
   let pos = decl.getEnd()
   let ret = [`declaration in: ${file}`]
   let quickInfo = service.getQuickInfoAtPosition(file, pos)
@@ -290,11 +303,10 @@ function getSource(name) {
   let declarations = getDeclarations()
   for (let file in declarations) {
     let names = declarations[file]
-    let nameText = names.map(t => t.getText())
-    if (nameText.indexOf(name) >= 0) {
-      let decl = names[nameText.indexOf(name)]
+    if (names[name]) {
+      let decl = names[name]
       let pager = process.env.PAGER
-      let text = decl.parent.getFullText()
+      let text = decl[0].parent.getFullText()
       if (!pager || text.split('\n').length < 24) {
         console.log(text)
         repl(defaultPrompt)
@@ -325,9 +337,8 @@ function getType(name, detailed) {
   let declarations = getDeclarations()
   for (let file in declarations) {
     let names = declarations[file]
-    let nameText = names.map(t => t.getText())
-    if (nameText.indexOf(name) >= 0) {
-      let decl = names[nameText.indexOf(name)]
+    if (names[name]) {
+      let decl = names[name][0]
       let infoString = getTypeInfo(decl, file, detailed)
       console.log(infoString.join('\n').cyan)
       return
