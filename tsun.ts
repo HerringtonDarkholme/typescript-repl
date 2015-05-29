@@ -246,7 +246,6 @@ var getDeclarations = (function() {
   let declFiles = getDeclarationFiles().concat(path.join(__dirname, '../node_modules/typescript/bin/lib.core.es6.d.ts'))
   for (let file of declFiles) {
     declarations[file] = collectDeclaration(service.getSourceFile(file))
-    console.log(declarations[file])
   }
   return function(cached: boolean = false) {
     if (!cached) {
