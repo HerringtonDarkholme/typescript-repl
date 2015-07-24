@@ -1,13 +1,13 @@
 {
   "name": "tsun",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "TSUN: a repl for TypeScript Upgraded Node",
   "bin": "./bin/tsun",
   "dependencies": {
     "colors": "^1.0.3",
     "optimist": "^0.6.1",
     "temp": "^0.8.1",
-    "typescript": "^1.5.0-beta"
+    "typescript": "^1.6.0-dev.20150723"
   },
   "scripts": {
     "prepublish": "tsc -m commonjs --outdir ./bin tsun.ts"
