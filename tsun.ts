@@ -1,6 +1,6 @@
 /// <reference path='./typings/node.d.ts' />
 /// <reference path='./typings/colors.d.ts' />
-/// <reference path='./node_modules/typescript/bin/typescript.d.ts' />
+/// <reference path='./node_modules/typescript/lib/typescript.d.ts' />
 
 import readline = require('readline')
 import util = require('util')
@@ -156,7 +156,7 @@ var serviceHost: ts.LanguageServiceHost = {
     }
   },
   getCurrentDirectory: () => process.cwd(),
-  getDefaultLibFileName: (options) => path.join(__dirname, '../node_modules/typescript/bin/lib.core.es6.d.ts')
+  getDefaultLibFileName: (options) => path.join(__dirname, '../node_modules/typescript/lib/lib.core.es6.d.ts')
 }
 
 var service = ts.createLanguageService(serviceHost, ts.createDocumentRegistry())
@@ -243,7 +243,7 @@ function collectDeclaration(sourceFile): any {
 
 var getDeclarations = (function() {
   var declarations: {[fileName: string]: {[name: string]: ts.DeclarationName[]}} = {}
-  let declFiles = getDeclarationFiles().concat(path.join(__dirname, '../node_modules/typescript/bin/lib.core.es6.d.ts'))
+  let declFiles = getDeclarationFiles().concat(path.join(__dirname, '../node_modules/typescript/lib/lib.core.es6.d.ts'))
   for (let file of declFiles) {
     declarations[file] = collectDeclaration(service.getSourceFile(file))
   }
