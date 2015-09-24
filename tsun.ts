@@ -62,6 +62,7 @@ function runCode() {
       noEmitOnError: true,
       target: ts.ScriptTarget.ES5,
       module: ts.ModuleKind.CommonJS,
+      experimentalDecorators: true,
   })
   if (compileError) process.exit(compileError)
   linkDir(process.cwd(), tempPath)
@@ -139,7 +140,8 @@ var rl = createReadLine()
 var serviceHost: ts.LanguageServiceHost = {
   getCompilationSettings: () => ({
     module: ts.ModuleKind.CommonJS,
-    target: ts.ScriptTarget.ES5
+    target: ts.ScriptTarget.ES5,
+    experimentalDecorators: true
   }),
   getScriptFileNames: () => [dummyFile],
   getScriptVersion: (fileName) => {
