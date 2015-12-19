@@ -428,7 +428,8 @@ function replLoop(prompt, code) {
   var closeCurly = (code.match(/\}/g) || []).length;
   var openParen = (code.match(/\(/g) || []).length;
   var closeParen = (code.match(/\)/g) || []).length;
-  if (openCurly === closeCurly && openParen === closeParen) {
+  var templateClosed = (code.match(/`/g) || []).length % 2 === 0;
+  if (openCurly === closeCurly && openParen === closeParen && templateClosed) {
     startEvaluate(code)
     repl(defaultPrompt)
   } else {
