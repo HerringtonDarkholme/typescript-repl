@@ -461,10 +461,10 @@ function enterPasteMode() {
 function repl(prompt) {
   'use strict';
   rl.question(prompt, function (code) {
-    if (/^:(type|detail)/.test(code)) {
+    if (/^:(type|t|detail)/.test(code)) {
       let identifier = code.split(' ')[1]
       if (!identifier) {
-        console.log(':type|detail command need names!'.red)
+        console.log(':type|t|detail command need names!'.red)
         return repl(prompt)
       }
       getType(identifier, code.indexOf('detail') === 1)
