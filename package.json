@@ -7,7 +7,7 @@
     "colors": "^1.0.3",
     "optimist": "^0.6.1",
     "temp": "^0.8.1",
-    "typescript": "^1.8.0-dev.20151219"
+    "typescript": "1.8.0-dev.20160101"
   },
   "scripts": {
     "prepublish": "tsc -m commonjs --outdir ./bin tsun.ts"

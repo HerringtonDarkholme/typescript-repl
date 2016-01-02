@@ -1,19 +1,17 @@
 /// <reference path='./typings/node.d.ts' />
 /// <reference path='./typings/colors.d.ts' />
-/// <reference path='./node_modules/typescript/lib/typescript.d.ts' />
 
-import readline = require('readline')
-import util = require('util')
-import vm = require('vm')
-import path = require('path')
-import ConsoleModule = require('console')
-import ts = require('typescript')
-import fs = require('fs')
-import colors = require('colors')
-import os = require('os')
-import child_process = require('child_process')
+import * as readline from 'readline'
+import * as util from 'util'
+import * as vm from 'vm'
+import * as path from 'path'
+import {Console} from 'console'
+import * as ts from 'typescript'
+import * as fs from 'fs'
+import * as colors from 'colors'
+import * as os from 'os'
+import * as child_process from 'child_process'
 
-var Console = ConsoleModule.Console
 var builtinLibs = require('repl')._builtinLibs
 
 // workaround for ts import
@@ -77,7 +75,7 @@ function runCode() {
   process.exit()
 }
 
-function linkDir(src, dest) {
+function linkDir(src: string, dest: string) {
   let files = ['node_modules', 'typings']
   for (let file of files) {
     let srcpath = path.join(src, file)
@@ -167,7 +165,7 @@ function createReadLine() {
   return readline.createInterface({
     input: process.stdin,
     output: process.stdout,
-    completer(line) {
+    completer(line: string) {
       // append new line to get completions, then revert new line
       versionCounter++
       let originalCodes = codes
@@ -183,7 +181,7 @@ function createReadLine() {
         return [[], line]
       }
       let prefix = /[A-Za-z_$]+$/.exec(line)
-      let candidates = []
+      let candidates: string[] = []
       if (prefix) {
         let prefixStr = prefix[0]
         candidates = completions.entries.filter((entry) => {
@@ -202,7 +200,7 @@ function createReadLine() {
 // Much of this function is from repl.REPLServer.createContext
 function createContext() {
   'use strict';
-  var context;
+  var context: any;
   context = vm.createContext();
   for (var g in global) {
     context[g] = global[g];
@@ -214,7 +212,7 @@ function createContext() {
   context.require = require;
 
   // Lazy load modules on use
-  builtinLibs.forEach(function (name) {
+  builtinLibs.forEach(function (name: string) {
     Object.defineProperty(context, name, {
       get: function () {
         var lib = require(name);
@@ -222,7 +220,7 @@ function createContext() {
         return lib;
       },
       // Allow creation of globals of the same name
-      set: function (val) {
+      set: function (val: any) {
         delete context[name];
         context[name] = val;
       },
@@ -234,11 +232,11 @@ function createContext() {
 }
 
 // private api hacks
-function collectDeclaration(sourceFile): any {
+function collectDeclaration(sourceFile: any): any {
 	let decls = sourceFile.getNamedDeclarations()
-	var ret = {}
+	var ret: any = {}
 	for (let decl in decls) {
-		ret[decl] = decls[decl].map(t => t.name)
+		ret[decl] = decls[decl].map((t: any) => t.name)
 	}
 	return ret
 }
@@ -258,7 +256,7 @@ var getDeclarations = (function() {
 })()
 
 
-function getMemberInfo(member, file, parentDeclaration): string {
+function getMemberInfo(member: ts.ClassElement, file: string, parentDeclaration: any): string {
   // member info is stored as the first
   let pos = member.getStart()
   let quickInfo = service.getQuickInfoAtPosition(file, pos)
@@ -300,7 +298,7 @@ function getTypeInfo(decl: ts.Node, file: string, detailed: boolean): string[] {
 
 }
 
-function getSource(name) {
+function getSource(name: string) {
   let declarations = getDeclarations()
   for (let file in declarations) {
     let names = declarations[file]
@@ -334,7 +332,7 @@ function getSource(name) {
   console.log(`identifier ${name} not found`.yellow)
 }
 
-function getType(name, detailed) {
+function getType(name: string, detailed: boolean) {
   let declarations = getDeclarations()
   for (let file in declarations) {
     let names = declarations[file]
@@ -376,7 +374,7 @@ function getDiagnostics() {
   return allDiagnostics
 }
 
-function startEvaluate(code) {
+function startEvaluate(code: string) {
   buffer = ''
   let fallback = codes
   codes += code
@@ -422,7 +420,7 @@ function waitForMoreLines(code: string, indentLevel: number) {
   repl(nextPrompt);
 }
 
-function replLoop(prompt, code) {
+function replLoop(prompt: string, code: string) {
   code = buffer + '\n' + code;
   var openCurly = (code.match(/\{/g) || []).length;
   var closeCurly = (code.match(/\}/g) || []).length;
@@ -438,7 +436,7 @@ function replLoop(prompt, code) {
   }
 }
 
-function addLine(line) {
+function addLine(line: string) {
   buffer += '\n' + line
 }
 
@@ -448,7 +446,7 @@ function enterPasteMode() {
   let oldPrompt = defaultPrompt
   rl.setPrompt('')
   rl.on('line', addLine)
-  rl.once('close', (d) => {
+  rl.once('close', (d: any) => {
     console.log('evaluating...'.cyan)
     rl.removeListener('line', addLine)
     startEvaluate(buffer)
@@ -458,9 +456,9 @@ function enterPasteMode() {
 }
 
 // main loop
-function repl(prompt) {
+function repl(prompt: string) {
   'use strict';
-  rl.question(prompt, function (code) {
+  rl.question(prompt, function (code: string) {
     if (/^:(type|detail)/.test(code)) {
       let identifier = code.split(' ')[1]
       if (!identifier) {
