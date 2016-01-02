@@ -139,6 +139,7 @@ var serviceHost: ts.LanguageServiceHost = {
   getCompilationSettings: () => ({
     module: ts.ModuleKind.CommonJS,
     target: ts.ScriptTarget.ES5,
+    newLine: ts.NewLineKind.LineFeed,
     experimentalDecorators: true
   }),
   getScriptFileNames: () => [dummyFile],
@@ -172,7 +173,7 @@ function createReadLine() {
       codes += buffer + '\n' + line
       if (':' === line[0]) {
         let candidates = ['type', 'detail', 'source', 'paste', 'clear', 'print', 'help']
-		candidates = candidates.map(c => ':' + c).filter(c => c.indexOf(line) >= 0)
+        candidates = candidates.map(c => ':' + c).filter(c => c.indexOf(line) >= 0)
         return [candidates, line.trim()]
       }
       let completions = service.getCompletionsAtPosition(dummyFile, codes.length)
@@ -233,12 +234,12 @@ function createContext() {
 
 // private api hacks
 function collectDeclaration(sourceFile: any): any {
-	let decls = sourceFile.getNamedDeclarations()
-	var ret: any = {}
-	for (let decl in decls) {
-		ret[decl] = decls[decl].map((t: any) => t.name)
-	}
-	return ret
+  let decls = sourceFile.getNamedDeclarations()
+  var ret: any = {}
+  for (let decl in decls) {
+    ret[decl] = decls[decl].map((t: any) => t.name)
+  }
+  return ret
 }
 
 var getDeclarations = (function() {
@@ -249,7 +250,7 @@ var getDeclarations = (function() {
   }
   return function(cached: boolean = false) {
     if (!cached) {
-		declarations[dummyFile] = collectDeclaration(service.getSourceFile(dummyFile))
+      declarations[dummyFile] = collectDeclaration(service.getSourceFile(dummyFile))
     }
     return declarations
   }
@@ -362,7 +363,6 @@ tsun repl commands
 }
 
 function getDiagnostics() {
-  let emit = service.getEmitOutput(dummyFile)
   let allDiagnostics = service.getCompilerOptionsDiagnostics()
     .concat(service.getSyntacticDiagnostics(dummyFile))
     .concat(service.getSemanticDiagnostics(dummyFile))
@@ -374,6 +374,15 @@ function getDiagnostics() {
   return allDiagnostics
 }
 
+var storedLine = 0
+function getCurrentCode() {
+  let emit = service.getEmitOutput(dummyFile)
+  let lines = emit.outputFiles[0].text.split('\r\n').filter(k => !!k)
+  let ret = lines.slice(storedLine).join('\n')
+  storedLine = lines.length
+  return ret
+}
+
 function startEvaluate(code: string) {
   buffer = ''
   let fallback = codes
@@ -382,18 +391,14 @@ function startEvaluate(code: string) {
   let allDiagnostics = getDiagnostics()
   if (allDiagnostics.length) {
     codes = fallback
-  if (defaultPrompt != '> ') {
-    console.log('')
-    console.log(defaultPrompt, 'URUSAI URUSAI URUSAI'.magenta)
-    console.log('')
-  }
+    if (defaultPrompt != '> ') {
+      console.log('')
+      console.log(defaultPrompt, 'URUSAI URUSAI URUSAI'.magenta)
+      console.log('')
+    }
     return repl(defaultPrompt);
   }
-  let current = ts.transpile(code)
-  // workaround
-  if (code.trim().substr(0, 6) === 'import' && !current.trim()) {
-    current = code.replace(/^\s*import/, 'var')
-  }
+  let current = getCurrentCode()
   if (verbose) {
     console.log(current.green);
   }
