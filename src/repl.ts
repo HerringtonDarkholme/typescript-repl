@@ -11,6 +11,8 @@ import * as fs from 'fs'
 import * as os from 'os'
 import * as child_process from 'child_process'
 
+var Module = require('module')
+
 import 'colors'
 
 const DUMMY_FILE = 'TSUN.repl.generated.ts'
@@ -131,10 +133,20 @@ function createContext() {
   context.console = new Console(process.stdout);
   context.global = context;
   context.global.global = context;
-  context.module = module;
-  context.require = function(p: string) {
-    return require(path.join(process.cwd(), p))
-  };
+  context.module = new Module(DUMMY_FILE);
+  try {
+    // hack for require.resolve("./relative") to work properly.
+    module.filename = path.resolve('repl');
+  } catch (e) {
+    // path.resolve('repl') fails when the current working directory has been
+    // deleted.  Fall back to the directory name of the (absolute) executable
+    // path.  It's not really correct but what are the alternatives?
+    const dirname = path.dirname(process.execPath);
+    module.filename = path.resolve(dirname, 'repl');
+  }
+  context.paths = Module._nodeModulePaths(module.filename)
+  var req = context.module.require.bind(module)
+  context.require = req
 
   // Lazy load modules on use
   builtinLibs.forEach(function (name: string) {
