@@ -286,16 +286,15 @@ tsun repl commands
   }
 }
 
-function getDiagnostics() {
+function getDiagnostics(): string[] {
   let allDiagnostics = service.getCompilerOptionsDiagnostics()
     .concat(service.getSyntacticDiagnostics(DUMMY_FILE))
     .concat(service.getSemanticDiagnostics(DUMMY_FILE))
 
-  allDiagnostics.forEach(diagnostic => {
+  return allDiagnostics.map(diagnostic => {
     let message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n')
-    console.warn(message.red.bold)
+    return message
   })
-  return allDiagnostics
 }
 
 var storedLine = 0
@@ -316,6 +315,7 @@ function startEvaluate(code: string) {
   let allDiagnostics = getDiagnostics()
   if (allDiagnostics.length) {
     codes = fallback
+    console.warn(allDiagnostics.join('').bold.red)
     if (defaultPrompt != '> ') {
       console.log('')
       console.log(defaultPrompt, 'URUSAI URUSAI URUSAI'.magenta)
