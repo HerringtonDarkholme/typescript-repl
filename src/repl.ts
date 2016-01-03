@@ -327,7 +327,7 @@ function startEvaluate(code: string) {
   let allDiagnostics = getDiagnostics()
   if (allDiagnostics.length) {
     codes = fallback
-    console.warn(allDiagnostics.join('').bold.red)
+    console.warn(allDiagnostics.join('\n').bold.red)
     if (defaultPrompt != '> ') {
       console.log('')
       console.log(defaultPrompt, 'URUSAI URUSAI URUSAI'.magenta)
