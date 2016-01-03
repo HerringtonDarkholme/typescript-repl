@@ -70,9 +70,10 @@ var service = ts.createLanguageService(serviceHost, ts.createDocumentRegistry())
 function getDeclarationFiles() {
   var libPaths = [path.resolve(__dirname, '../../typings/node.d.ts')]
   try {
-    let dirs = fs.readdirSync('typings')
+    let typings = path.join(process.cwd(), './typings')
+    let dirs = fs.readdirSync(typings)
     for (let dir of dirs) {
-      libPaths.push(path.join('typings', dir))
+      libPaths.push(path.join(typings, dir))
     }
   } catch(e) {
   }
@@ -133,19 +134,20 @@ function createContext() {
   context.console = new Console(process.stdout);
   context.global = context;
   context.global.global = context;
-  context.module = new Module(DUMMY_FILE);
+  context.module = new Module('<repl>');
   try {
     // hack for require.resolve("./relative") to work properly.
-    module.filename = path.resolve('repl');
+    context.module.filename = path.resolve('repl');
   } catch (e) {
     // path.resolve('repl') fails when the current working directory has been
     // deleted.  Fall back to the directory name of the (absolute) executable
     // path.  It's not really correct but what are the alternatives?
     const dirname = path.dirname(process.execPath);
-    module.filename = path.resolve(dirname, 'repl');
+    context.module.filename = path.resolve(dirname, 'repl');
   }
-  context.paths = Module._nodeModulePaths(module.filename)
-  var req = context.module.require.bind(module)
+  context.module.paths = Module._nodeModulePaths(context.module.filename)
+  context.paths = Module._resolveLookupPaths(process.cwd(), context.module)[1]
+  var req = context.module.require.bind(context.module)
   context.require = req
 
   // Lazy load modules on use
