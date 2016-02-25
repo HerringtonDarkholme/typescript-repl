@@ -6,7 +6,7 @@ When you pass ts file to TSUN in command line argument, TSUN will automatically 
 
 Feature:
 ===
-* TS 1.7 support
+* TS 1.8 support
 * Tab-completion support
 * Multiple Line Mode
 * Paste Mode
