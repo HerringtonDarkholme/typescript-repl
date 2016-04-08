@@ -187,11 +187,12 @@ var getDeclarations = (function() {
   var declarations: {[fileName: string]: {[name: string]: ts.DeclarationName[]}} = {}
   let declFiles = getDeclarationFiles().concat(path.join(__dirname, '../../node_modules/typescript/lib/lib.core.es6.d.ts'))
   for (let file of declFiles) {
-    declarations[file] = collectDeclaration(service.getSourceFile(file))
+    let text = fs.readFileSync(file, 'utf8')
+    declarations[file] = collectDeclaration(ts.createSourceFile(file, text, ts.ScriptTarget.Latest))
   }
   return function(cached: boolean = false) {
     if (!cached) {
-      declarations[DUMMY_FILE] = collectDeclaration(service.getSourceFile(DUMMY_FILE))
+      declarations[DUMMY_FILE] = collectDeclaration(ts.createSourceFile(DUMMY_FILE, codes, ts.ScriptTarget.Latest))
     }
     return declarations
   }
