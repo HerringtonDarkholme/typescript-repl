@@ -1,6 +1,6 @@
 {
   "name": "tsun",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "TSUN: a repl for TypeScript Upgraded Node",
   "bin": "./bin/tsun",
   "dependencies": {
