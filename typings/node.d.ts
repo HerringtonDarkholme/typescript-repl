@@ -653,6 +653,7 @@ declare module "node-color-readline" {
         input: NodeJS.ReadableStream;
         output: NodeJS.WritableStream;
         completer?: Function;
+        suggest?: Function;
         terminal?: boolean;
         colorize?: (s: string) => string
     }

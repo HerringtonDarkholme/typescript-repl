@@ -104,7 +104,7 @@ function createReadLine() {
         [/\b(try|catch|finally|Error|delete|throw|import)\b/, 'red'],
         [/\b(eval|isFinite|isNaN|parseFloat|parseInt|decodeURI|decodeURIComponent)\b/, 'yellow'],
         [/\b(encodeURI|encodeURIComponent|escape|unescape|Object|Function|Boolean|Error)\b/, 'yellow'],
-        [/\b(Number|Math|Date|String|RegExp|Array|JSON|=>)\b/, 'yellow'],
+        [/\b(Number|Math|Date|String|RegExp|Array|JSON|=>|string|number|boolean)\b/, 'yellow'],
         [/\b(console|module|process|require|arguments|fs|global)\b/, 'yellow'],
       ]
       while (line !== '') {
