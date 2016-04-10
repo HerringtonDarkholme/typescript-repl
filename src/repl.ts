@@ -40,6 +40,7 @@ var serviceHost: ts.LanguageServiceHost = {
     module: ts.ModuleKind.CommonJS,
     target: ts.ScriptTarget.ES5,
     newLine: ts.NewLineKind.LineFeed,
+    noEmitHelpers: true,
     experimentalDecorators: true
   }),
   getScriptFileNames: () => [DUMMY_FILE],
@@ -381,7 +382,6 @@ tsun repl commands
 
 function getDiagnostics(): string[] {
   let allDiagnostics = service.getCompilerOptionsDiagnostics()
-    .concat(service.getSyntacticDiagnostics(DUMMY_FILE))
     .concat(service.getSemanticDiagnostics(DUMMY_FILE))
 
   return allDiagnostics.map(diagnostic => {
@@ -444,18 +444,25 @@ function waitForMoreLines(code: string, indentLevel: number) {
 }
 
 function replLoop(prompt: string, code: string) {
-  code = buffer + '\n' + code;
-  var openCurly = (code.match(/\{/g) || []).length;
-  var closeCurly = (code.match(/\}/g) || []).length;
-  var openParen = (code.match(/\(/g) || []).length;
-  var closeParen = (code.match(/\)/g) || []).length;
-  var templateClosed = (code.match(/`/g) || []).length % 2 === 0;
-  if (openCurly === closeCurly && openParen === closeParen && templateClosed) {
+  let fallback = codes
+  let userInput = code
+  versionCounter++
+  code = buffer + '\n' + code
+  codes += code
+  let diagnostics = service.getSyntacticDiagnostics(DUMMY_FILE)
+  if (diagnostics.length === 0) {
+    codes = fallback
     startEvaluate(code)
     repl(defaultPrompt)
   } else {
-    let indentLevel = openCurly - closeCurly + openParen - closeParen;
-    waitForMoreLines(code, indentLevel)
+    codes = fallback
+    let openCurly = (code.match(/\{/g) || []).length;
+    let closeCurly = (code.match(/\}/g) || []).length;
+    let openParen = (code.match(/\(/g) || []).length;
+    let closeParen = (code.match(/\)/g) || []).length;
+    // at lease one indent in multiline
+    let indentLevel = (openCurly - closeCurly + openParen - closeParen) || 1
+    waitForMoreLines(code, indentLevel || 1)
   }
 }
 
