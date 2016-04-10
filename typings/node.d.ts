@@ -634,6 +634,7 @@ declare module "readline" {
         terminal?: boolean;
     }
     export function createInterface(options: ReadLineOptions): ReadLine;
+    export function emitKeypressEvent(stream: NodeJS.ReadableStream): void;
 }
 
 declare module "vm" {

@@ -6,13 +6,10 @@ import {runCode} from './src/executor'
 import {startRepl} from './src/repl'
 
 var options = require('optimist')
-  .usage('A TypeScript REPL.\nUsage: $0')
+  .usage(`A TypeScript REPL. Usage:
+  ${'tsun'.blue} [options] [script.ts]`)
   .alias('h', 'help')
   .describe('h', 'Print this help message')
-  .alias('f', 'force')
-  .describe('f', 'Force tsun to evaluate code with ts errors.')
-  .alias('v', 'verbose')
-  .describe('v', 'Print compiled javascript before evaluating.')
   .alias('o', 'out')
   .describe('o', 'output directory relative to temporary')
   .describe('dere', "I-its's not like I'm an option so DON'T GET THE WRONG IDEA!")
