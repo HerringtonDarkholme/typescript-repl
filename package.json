@@ -5,6 +5,7 @@
   "bin": "./bin/tsun",
   "dependencies": {
     "colors": "^1.0.3",
+    "node-color-readline": "^1.0.0",
     "optimist": "^0.6.1",
     "temp": "^0.8.1",
     "typescript": "^1.8.2"

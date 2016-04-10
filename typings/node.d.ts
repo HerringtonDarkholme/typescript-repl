@@ -634,7 +634,29 @@ declare module "readline" {
         terminal?: boolean;
     }
     export function createInterface(options: ReadLineOptions): ReadLine;
-    export function emitKeypressEvent(stream: NodeJS.ReadableStream): void;
+}
+
+declare module "node-color-readline" {
+    import events = require("events");
+    import stream = require("stream");
+
+    export interface ReadLine extends events.EventEmitter {
+        setPrompt(prompt: string, length?: number): void;
+        prompt(preserveCursor?: boolean): void;
+        question(query: string, callback: Function): void;
+        pause(): void;
+        resume(): void;
+        close(): void;
+        write(data: any, key?: any): void;
+    }
+    export interface ReadLineOptions {
+        input: NodeJS.ReadableStream;
+        output: NodeJS.WritableStream;
+        completer?: Function;
+        terminal?: boolean;
+        colorize?: (s: string) => string
+    }
+    export function createInterface(options: ReadLineOptions): ReadLine;
 }
 
 declare module "vm" {

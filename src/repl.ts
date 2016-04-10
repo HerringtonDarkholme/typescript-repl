@@ -1,7 +1,7 @@
 /// <reference path='../typings/node.d.ts' />
 /// <reference path='../typings/colors.d.ts' />
 
-import * as readline from 'readline'
+import * as readline from 'node-color-readline'
 import * as util from 'util'
 import * as vm from 'vm'
 import * as path from 'path'
@@ -89,6 +89,42 @@ function createReadLine() {
   return readline.createInterface({
     input: process.stdin,
     output: process.stdout,
+    colorize(line) {
+      let colorized = ''
+      let regex: [RegExp, string][] = [
+        [/\/\//, 'grey'], // comment
+        [/(['"`\/]).*?(?!<\\)\1/, 'cyan'], // string/regex, not rock solid
+        [/[+-]?(\d+\.?\d*|\d*\.\d+)([eE][+-]?\d+)?/, 'cyan'], // number
+        [/\b(true|false|null|undefined|NaN|Infinity)\b/, 'blue'],
+        [/\b(in|if|for|while|var|new|function|do|return|void|else|break)\b/, 'green'],
+        [/\b(instanceof|with|case|default|try|this|switch|continue|typeof)\b/, 'green'],
+        [/\b(let|yield|const|class|extends|interface|type)\b/, 'green'],
+        [/\b(try|catch|finally|Error|delete|throw|import)\b/, 'red'],
+        [/\b(eval|isFinite|isNaN|parseFloat|parseInt|decodeURI|decodeURIComponent)\b/, 'yellow'],
+        [/\b(encodeURI|encodeURIComponent|escape|unescape|Object|Function|Boolean|Error)\b/, 'yellow'],
+        [/\b(Number|Math|Date|String|RegExp|Array|JSON|=>)\b/, 'yellow'],
+        [/\b(console|module|process|require|arguments|fs|global)\b/, 'yellow'],
+      ]
+      while (line !== '') {
+        let start = +Infinity
+        let color = ''
+        let length = 0
+        for (let reg of regex) {
+          let match = reg[0].exec(line)
+          if (match && match.index < start) {
+            start = match.index
+            color = reg[1]
+            length = match[0].length
+          }
+        }
+        colorized += line.substring(0, start)
+        if (color) {
+          colorized += (<any>line.substr(start, length))[color]
+        }
+        line = line.substr(start + length)
+      }
+      return colorized
+    },
     completer(line: string) {
       // append new line to get completions, then revert new line
       versionCounter++
