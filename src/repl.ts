@@ -70,6 +70,7 @@ function getDeclarationFiles() {
     let typings = path.join(process.cwd(), './typings')
     let dirs = fs.readdirSync(typings)
     for (let dir of dirs) {
+      if (!/\.d\.ts$/.test(dir)) continue
       let p = path.join(typings, dir)
       if (fs.statSync(p).isFile()) {
         libPaths.push(p)
