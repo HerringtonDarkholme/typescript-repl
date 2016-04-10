@@ -102,11 +102,12 @@ function createReadLine() {
         [/\b(in|if|for|while|var|new|function|do|return|void|else|break)\b/, 'green'],
         [/\b(instanceof|with|case|default|try|this|switch|continue|typeof)\b/, 'green'],
         [/\b(let|yield|const|class|extends|interface|type)\b/, 'green'],
-        [/\b(try|catch|finally|Error|delete|throw|import)\b/, 'red'],
+        [/\b(try|catch|finally|Error|delete|throw|import|from|as)\b/, 'red'],
         [/\b(eval|isFinite|isNaN|parseFloat|parseInt|decodeURI|decodeURIComponent)\b/, 'yellow'],
         [/\b(encodeURI|encodeURIComponent|escape|unescape|Object|Function|Boolean|Error)\b/, 'yellow'],
         [/\b(Number|Math|Date|String|RegExp|Array|JSON|=>|string|number|boolean)\b/, 'yellow'],
         [/\b(console|module|process|require|arguments|fs|global)\b/, 'yellow'],
+        [/\b(private|public|protected|abstract|namespace|declare|@)\b/, 'magenta'], // TS keyword
       ]
       while (line !== '') {
         let start = +Infinity
