@@ -2,9 +2,8 @@
 /// <reference path='../typings/colors.d.ts' />
 
 import * as ts from 'typescript'
-import * as fs from 'fs'
 import * as path from 'path'
-import * as child_process from 'child_process'
+import * as fs from 'fs'
 import {repl, defaultPrompt} from './repl'
 
 const DUMMY_FILE = 'TSUN.repl.generated.ts'
@@ -39,7 +38,7 @@ var serviceHost: ts.LanguageServiceHost = {
 
 var service = ts.createLanguageService(serviceHost, ts.createDocumentRegistry())
 
-var getDeclarations = (function() {
+export var getDeclarations = (function() {
   var declarations: {[fileName: string]: {[name: string]: ts.DeclarationName[]}} = {}
   let declFiles = getDeclarationFiles().concat(path.join(__dirname, '../../node_modules/typescript/lib/lib.core.es6.d.ts'))
   for (let file of declFiles) {
@@ -128,39 +127,6 @@ function getTypeInfo(decl: ts.Node, file: string, detailed: boolean): string[] {
 
 }
 
-export function getSource(name: string) {
-  let declarations = getDeclarations()
-  for (let file in declarations) {
-    let names = declarations[file]
-    if (names[name]) {
-      let decl = names[name]
-      let pager = process.env.PAGER
-      let text = decl[0].parent.getFullText()
-      if (!pager || text.split('\n').length < 24) {
-        console.log(text)
-        repl(defaultPrompt)
-        return
-       }
-       process.stdin.pause()
-       var tty = require('tty')
-       tty.setRawMode(false)
-       var temp = require('temp')
-       let tempFile = temp.openSync('DUMMY_FILE' + Math.random())
-       fs.writeFileSync(tempFile.path, text)
-       let display = child_process.spawn('less', [tempFile.path], {
-         'stdio': [0, 1, 2]
-       })
-       display.on('exit', function() {
-         temp.cleanupSync()
-         tty.setRawMode(true)
-         process.stdin.resume()
-         repl(defaultPrompt)
-       })
-       return
-    }
-  }
-  console.log(`identifier ${name} not found`.yellow)
-}
 
 export function completer(line: string) {
   // append new line to get completions, then revert new line
@@ -230,7 +196,7 @@ export function getCurrentCode() {
   return ret
 }
 
-export function getSyntacticDiagnostics(code: string) {
+export function testSyntacticError(code: string) {
   let fallback = codes
   versionCounter++
   codes += code

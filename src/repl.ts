@@ -9,8 +9,10 @@ import * as util from 'util'
 import * as vm from 'vm'
 import {Console} from 'console'
 import * as path from 'path'
+import * as child_process from 'child_process'
+import * as fs from 'fs'
 
-import {completer, codes, getType, getDiagnostics, getCurrentCode, getSource, getSyntacticDiagnostics, clearHistory} from './service'
+import {completer, codes, getType, getDiagnostics, getCurrentCode, getDeclarations, testSyntacticError, clearHistory} from './service'
 
 var Module = require('module')
 
@@ -30,48 +32,49 @@ export var defaultPrompt = '> ', moreLinesPrompt = '..'
 var buffer = ''
 var rl = createReadLine()
 
+function colorize(line: string) {
+  let colorized = ''
+  let regex: [RegExp, string][] = [
+    [/\/\/.*$/m, 'grey'], // comment
+    [/(['"`\/]).*?(?!<\\)\1/, 'cyan'], // string/regex, not rock solid
+    [/[+-]?(\d+\.?\d*|\d*\.\d+)([eE][+-]?\d+)?/, 'cyan'], // number
+    [/\b(true|false|null|undefined|NaN|Infinity)\b/, 'blue'],
+    [/\b(in|if|for|while|var|new|function|do|return|void|else|break)\b/, 'green'],
+    [/\b(instanceof|with|case|default|try|this|switch|continue|typeof)\b/, 'green'],
+    [/\b(let|yield|const|class|extends|interface|type)\b/, 'green'],
+    [/\b(try|catch|finally|Error|delete|throw|import|from|as)\b/, 'red'],
+    [/\b(eval|isFinite|isNaN|parseFloat|parseInt|decodeURI|decodeURIComponent)\b/, 'yellow'],
+    [/\b(encodeURI|encodeURIComponent|escape|unescape|Object|Function|Boolean|Error)\b/, 'yellow'],
+    [/\b(Number|Math|Date|String|RegExp|Array|JSON|=>|string|number|boolean)\b/, 'yellow'],
+    [/\b(console|module|process|require|arguments|fs|global)\b/, 'yellow'],
+    [/\b(private|public|protected|abstract|namespace|declare|@)\b/, 'magenta'], // TS keyword
+  ]
+  while (line !== '') {
+    let start = +Infinity
+    let color = ''
+    let length = 0
+    for (let reg of regex) {
+      let match = reg[0].exec(line)
+      if (match && match.index < start) {
+        start = match.index
+        color = reg[1]
+        length = match[0].length
+      }
+    }
+    colorized += line.substring(0, start)
+    if (color) {
+      colorized += (<any>line.substr(start, length))[color]
+    }
+    line = line.substr(start + length)
+  }
+  return colorized
+}
 
 function createReadLine() {
   return readline.createInterface({
     input: process.stdin,
     output: process.stdout,
-    colorize(line) {
-      let colorized = ''
-      let regex: [RegExp, string][] = [
-        [/\/\//, 'grey'], // comment
-        [/(['"`\/]).*?(?!<\\)\1/, 'cyan'], // string/regex, not rock solid
-        [/[+-]?(\d+\.?\d*|\d*\.\d+)([eE][+-]?\d+)?/, 'cyan'], // number
-        [/\b(true|false|null|undefined|NaN|Infinity)\b/, 'blue'],
-        [/\b(in|if|for|while|var|new|function|do|return|void|else|break)\b/, 'green'],
-        [/\b(instanceof|with|case|default|try|this|switch|continue|typeof)\b/, 'green'],
-        [/\b(let|yield|const|class|extends|interface|type)\b/, 'green'],
-        [/\b(try|catch|finally|Error|delete|throw|import|from|as)\b/, 'red'],
-        [/\b(eval|isFinite|isNaN|parseFloat|parseInt|decodeURI|decodeURIComponent)\b/, 'yellow'],
-        [/\b(encodeURI|encodeURIComponent|escape|unescape|Object|Function|Boolean|Error)\b/, 'yellow'],
-        [/\b(Number|Math|Date|String|RegExp|Array|JSON|=>|string|number|boolean)\b/, 'yellow'],
-        [/\b(console|module|process|require|arguments|fs|global)\b/, 'yellow'],
-        [/\b(private|public|protected|abstract|namespace|declare|@)\b/, 'magenta'], // TS keyword
-      ]
-      while (line !== '') {
-        let start = +Infinity
-        let color = ''
-        let length = 0
-        for (let reg of regex) {
-          let match = reg[0].exec(line)
-          if (match && match.index < start) {
-            start = match.index
-            color = reg[1]
-            length = match[0].length
-          }
-        }
-        colorized += line.substring(0, start)
-        if (color) {
-          colorized += (<any>line.substr(start, length))[color]
-        }
-        line = line.substr(start + length)
-      }
-      return colorized
-    },
+    colorize: colorize,
     completer(line: string) {
       let code = buffer + '\n' + line
 	  return completer(code)
@@ -232,7 +235,7 @@ function waitForMoreLines(code: string, indentLevel: number) {
 
 function replLoop(prompt: string, code: string) {
   code = buffer + '\n' + code
-  let diagnostics = getSyntacticDiagnostics(code)
+  let diagnostics = testSyntacticError(code)
   if (diagnostics.length === 0) {
     startEvaluate(code)
     repl(defaultPrompt)
@@ -264,6 +267,40 @@ function enterPasteMode() {
     rl = createReadLine()
     repl(defaultPrompt = oldPrompt)
   })
+}
+
+function getSource(name: string) {
+  let declarations = getDeclarations()
+  for (let file in declarations) {
+    let names = declarations[file]
+    if (names[name]) {
+      let decl = names[name]
+      let pager = process.env.PAGER
+      let text = decl[0].parent.getFullText()
+      if (!pager || text.split('\n').length < 24) {
+        console.log(text)
+        repl(defaultPrompt)
+        return
+       }
+       process.stdin.pause()
+       var tty = require('tty')
+       tty.setRawMode(false)
+       var temp = require('temp')
+       let tempFile = temp.openSync('DUMMY_FILE' + Math.random())
+       fs.writeFileSync(tempFile.path, text)
+       let display = child_process.spawn('less', [tempFile.path], {
+         'stdio': [0, 1, 2]
+       })
+       display.on('exit', function() {
+         temp.cleanupSync()
+         tty.setRawMode(true)
+         process.stdin.resume()
+         repl(defaultPrompt)
+       })
+       return
+    }
+  }
+  console.log(`identifier ${name} not found`.yellow)
 }
 
 // main loop
@@ -299,7 +336,7 @@ export function repl(prompt: string) {
       return repl(defaultPrompt)
     }
     if (/^:print/.test(code)) {
-      console.log(codes)
+      console.log(colorize(codes))
       return repl(prompt)
     }
     if (/^:paste/.test(code) && !buffer) {
