@@ -1,23 +1,20 @@
 /// <reference path='../typings/node.d.ts' />
 /// <reference path='../typings/colors.d.ts' />
+
 declare var Reflect: any
 declare var Promise: any
 
 import * as readline from 'node-color-readline'
 import * as util from 'util'
 import * as vm from 'vm'
-import * as path from 'path'
 import {Console} from 'console'
-import * as ts from 'typescript'
-import * as fs from 'fs'
-import * as os from 'os'
-import * as child_process from 'child_process'
+import * as path from 'path'
+
+import {completer, codes, getType, getDiagnostics, getCurrentCode, getSource, getSyntacticDiagnostics, clearHistory} from './service'
 
 var Module = require('module')
 
 import 'colors'
-
-const DUMMY_FILE = 'TSUN.repl.generated.ts'
 
 var options = require('optimist')
   .alias('f', 'force')
@@ -28,64 +25,10 @@ var options = require('optimist')
 
 var argv = options.argv
 
-var defaultPrompt = '> ', moreLinesPrompt = '..'
+export var defaultPrompt = '> ', moreLinesPrompt = '..'
 var verbose = argv.verbose
-var versionCounter = 0
-var codes = getInitialCommands()
-var buffer = ''
+export var buffer = ''
 var rl = createReadLine()
-
-var serviceHost: ts.LanguageServiceHost = {
-  getCompilationSettings: () => ({
-    module: ts.ModuleKind.CommonJS,
-    target: ts.ScriptTarget.ES5,
-    newLine: ts.NewLineKind.LineFeed,
-    noEmitHelpers: true,
-    experimentalDecorators: true
-  }),
-  getScriptFileNames: () => [DUMMY_FILE],
-  getScriptVersion: (fileName) => {
-    return fileName === DUMMY_FILE && versionCounter.toString()
-  },
-  getScriptSnapshot: (fileName) => {
-    try {
-      var text = fileName === DUMMY_FILE
-        ? codes
-        : fs.readFileSync(fileName).toString()
-      return ts.ScriptSnapshot.fromString(text)
-    } catch(e) {
-
-    }
-  },
-  getCurrentDirectory: () => process.cwd(),
-  getDefaultLibFileName: (options) => path.join(__dirname, '../../node_modules/typescript/lib/lib.core.es6.d.ts')
-}
-
-var service = ts.createLanguageService(serviceHost, ts.createDocumentRegistry())
-
-
-
-function getDeclarationFiles() {
-  var libPaths = [path.resolve(__dirname, '../../typings/node.d.ts')]
-  try {
-    let typings = path.join(process.cwd(), './typings')
-    let dirs = fs.readdirSync(typings)
-    for (let dir of dirs) {
-      if (!/\.d\.ts$/.test(dir)) continue
-      let p = path.join(typings, dir)
-      if (fs.statSync(p).isFile()) {
-        libPaths.push(p)
-      }
-    }
-  } catch(e) {
-  }
-  return libPaths
-}
-
-function getInitialCommands() {
-  var codes = getDeclarationFiles().map(dir => `/// <reference path="${dir}" />`)
-  return codes.join('\n')
-}
 
 
 function createReadLine() {
@@ -129,35 +72,7 @@ function createReadLine() {
       }
       return colorized
     },
-    completer(line: string) {
-      // append new line to get completions, then revert new line
-      versionCounter++
-      let originalCodes = codes
-      codes += buffer + '\n' + line
-      if (':' === line[0]) {
-        let candidates = ['type', 'detail', 'source', 'paste', 'clear', 'print', 'help']
-        candidates = candidates.map(c => ':' + c).filter(c => c.indexOf(line) >= 0)
-        return [candidates, line.trim()]
-      }
-      let completions = service.getCompletionsAtPosition(DUMMY_FILE, codes.length)
-      if (!completions) {
-        codes = originalCodes
-        return [[], line]
-      }
-      let prefix = /[A-Za-z_$]+$/.exec(line)
-      let candidates: string[] = []
-      if (prefix) {
-        let prefixStr = prefix[0]
-        candidates = completions.entries.filter((entry) => {
-          let name = entry.name
-          return name.substr(0, prefixStr.length) == prefixStr
-        }).map(entry => entry.name)
-      } else {
-        candidates = completions.entries.map(entry => entry.name)
-      }
-      codes = originalCodes
-      return [candidates, prefix ? prefix[0] : line]
-    }
+    completer: completer
   })
 }
 
@@ -251,121 +166,9 @@ function createContext() {
   return context;
 }
 
-// private api hacks
-function collectDeclaration(sourceFile: any): any {
-  let decls = sourceFile.getNamedDeclarations()
-  var ret: any = {}
-  for (let decl in decls) {
-    ret[decl] = decls[decl].map((t: any) => t.name)
-  }
-  return ret
-}
-
-var getDeclarations = (function() {
-  var declarations: {[fileName: string]: {[name: string]: ts.DeclarationName[]}} = {}
-  let declFiles = getDeclarationFiles().concat(path.join(__dirname, '../../node_modules/typescript/lib/lib.core.es6.d.ts'))
-  for (let file of declFiles) {
-    let text = fs.readFileSync(file, 'utf8')
-    declarations[file] = collectDeclaration(ts.createSourceFile(file, text, ts.ScriptTarget.Latest))
-  }
-  return function(cached: boolean = false) {
-    if (!cached) {
-      declarations[DUMMY_FILE] = collectDeclaration(ts.createSourceFile(DUMMY_FILE, codes, ts.ScriptTarget.Latest))
-    }
-    return declarations
-  }
-})()
 
 
-function getMemberInfo(member: ts.ClassElement, file: string, parentDeclaration: any): string {
-  // member info is stored as the first
-  let pos = member.getStart()
-  let quickInfo = service.getQuickInfoAtPosition(file, pos)
-  if (quickInfo) return ts.displayPartsToString(quickInfo.displayParts)
-  // DeclarationName includes Identifier which does not have name and will not go here
-  let name = member.name && member.name.getText()
-  if (!name) return member.getText()
-  let declarations = getDeclarations(true)[file][name]
-  for (let decl of declarations) {
-    let d: any = decl
-    if (parentDeclaration.parent.name.getText() == d.parent.parent.name.getText()) {
-      let quickInfo = service.getQuickInfoAtPosition(file, d.getEnd())
-      return ts.displayPartsToString(quickInfo.displayParts)
-    }
-  }
-  return member.getText()
-}
 
-function getTypeInfo(decl: ts.Node, file: string, detailed: boolean): string[] {
-  // getStart will count comment
-  let pos = decl.getEnd()
-  let ret = [`declaration in: ${file}`]
-  let quickInfo = service.getQuickInfoAtPosition(file, pos)
-  ret.push(ts.displayPartsToString(quickInfo.displayParts))
-  if (!detailed) return ret
-  let parentName = ret[1].split(' ')[1]
-  let symbolType = quickInfo.displayParts[0].text
-  if ( symbolType === 'interface' || symbolType === 'class') {
-    let classLikeDeclaration = <ts.ClassLikeDeclaration>decl.parent
-    for (let member of classLikeDeclaration.members) {
-      let memberInfo = getMemberInfo(member, file, decl).split('\n').map(mInfo => {
-        mInfo = mInfo.replace(new RegExp(parentName + '\\.', 'g'), '')
-        return '    ' + mInfo
-      })
-      ret.push(memberInfo.join('\n'))
-    }
-  }
-  return ret
-
-}
-
-function getSource(name: string) {
-  let declarations = getDeclarations()
-  for (let file in declarations) {
-    let names = declarations[file]
-    if (names[name]) {
-      let decl = names[name]
-      let pager = process.env.PAGER
-      let text = decl[0].parent.getFullText()
-      if (!pager || text.split('\n').length < 24) {
-        console.log(text)
-        repl(defaultPrompt)
-        return
-       }
-       process.stdin.pause()
-       var tty = require('tty')
-       tty.setRawMode(false)
-       var temp = require('temp')
-       let tempFile = temp.openSync('DUMMY_FILE' + Math.random())
-       fs.writeFileSync(tempFile.path, text)
-       let display = child_process.spawn('less', [tempFile.path], {
-         'stdio': [0, 1, 2]
-       })
-       display.on('exit', function() {
-         temp.cleanupSync()
-         tty.setRawMode(true)
-         process.stdin.resume()
-         repl(defaultPrompt)
-       })
-       return
-    }
-  }
-  console.log(`identifier ${name} not found`.yellow)
-}
-
-function getType(name: string, detailed: boolean) {
-  let declarations = getDeclarations()
-  for (let file in declarations) {
-    let names = declarations[file]
-    if (names[name]) {
-      let decl = names[name][0]
-      let infoString = getTypeInfo(decl, file, detailed)
-      console.log(infoString.join('\n').cyan)
-      return
-    }
-  }
-  console.log(`identifier ${name} not found`.yellow)
-}
 
 function printHelp() {
   console.log(`
@@ -382,34 +185,13 @@ tsun repl commands
   }
 }
 
-function getDiagnostics(): string[] {
-  let allDiagnostics = service.getCompilerOptionsDiagnostics()
-    .concat(service.getSemanticDiagnostics(DUMMY_FILE))
 
-  return allDiagnostics.map(diagnostic => {
-    let message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n')
-    return message
-  })
-}
-
-var storedLine = 0
-function getCurrentCode() {
-  let emit = service.getEmitOutput(DUMMY_FILE)
-  let lines = emit.outputFiles[0].text.split('\r\n').filter(k => !!k)
-  let ret = lines.slice(storedLine).join('\n')
-  storedLine = lines.length
-  return ret
-}
 
 var context = createContext();
 function startEvaluate(code: string) {
   buffer = ''
-  let fallback = codes
-  codes += code
-  versionCounter++
-  let allDiagnostics = getDiagnostics()
+  let allDiagnostics = getDiagnostics(code)
   if (allDiagnostics.length) {
-    codes = fallback
     console.warn(allDiagnostics.join('\n').bold.red)
     if (defaultPrompt != '> ') {
       console.log('')
@@ -446,18 +228,12 @@ function waitForMoreLines(code: string, indentLevel: number) {
 }
 
 function replLoop(prompt: string, code: string) {
-  let fallback = codes
-  let userInput = code
-  versionCounter++
   code = buffer + '\n' + code
-  codes += code
-  let diagnostics = service.getSyntacticDiagnostics(DUMMY_FILE)
+  let diagnostics = getSyntacticDiagnostics(code)
   if (diagnostics.length === 0) {
-    codes = fallback
     startEvaluate(code)
     repl(defaultPrompt)
   } else {
-    codes = fallback
     let openCurly = (code.match(/\{/g) || []).length;
     let closeCurly = (code.match(/\}/g) || []).length;
     let openParen = (code.match(/\(/g) || []).length;
@@ -488,7 +264,7 @@ function enterPasteMode() {
 }
 
 // main loop
-function repl(prompt: string) {
+export function repl(prompt: string) {
   'use strict';
   rl.question(prompt, function (code: string) {
     if (/^:(type|detail)/.test(code)) {
@@ -514,7 +290,7 @@ function repl(prompt: string) {
       return repl(prompt)
     }
     if (/^:clear/.test(code)) {
-      codes = getInitialCommands()
+      clearHistory()
       buffer = ''
       context = createContext()
       return repl(defaultPrompt)
