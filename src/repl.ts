@@ -24,10 +24,10 @@ var options = require('optimist')
   .describe('dere', "I-its's not like I'm an option so DON'T GET THE WRONG IDEA!")
 
 var argv = options.argv
+var verbose = argv.verbose
 
 export var defaultPrompt = '> ', moreLinesPrompt = '..'
-var verbose = argv.verbose
-export var buffer = ''
+var buffer = ''
 var rl = createReadLine()
 
 
@@ -72,7 +72,10 @@ function createReadLine() {
       }
       return colorized
     },
-    completer: completer
+    completer(line: string) {
+      let code = buffer + '\n' + line
+	  return completer(code)
+    }
   })
 }
 

@@ -5,7 +5,7 @@ import * as ts from 'typescript'
 import * as fs from 'fs'
 import * as path from 'path'
 import * as child_process from 'child_process'
-import {repl, defaultPrompt, buffer} from './repl'
+import {repl, defaultPrompt} from './repl'
 
 const DUMMY_FILE = 'TSUN.repl.generated.ts'
 var versionCounter = 0
@@ -166,7 +166,7 @@ export function completer(line: string) {
   // append new line to get completions, then revert new line
   versionCounter++
   let originalCodes = codes
-  codes += buffer + '\n' + line
+  codes += line
   if (':' === line[0]) {
     let candidates = ['type', 'detail', 'source', 'paste', 'clear', 'print', 'help']
     candidates = candidates.map(c => ':' + c).filter(c => c.indexOf(line) >= 0)
