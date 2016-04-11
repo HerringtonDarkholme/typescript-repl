@@ -7,6 +7,7 @@ When you pass ts file to TSUN in command line argument, TSUN will automatically 
 Feature:
 ===
 * TS 1.8 support
+* Keyword highlight
 * Tab-completion support
 * Multiple Line Mode
 * Paste Mode
@@ -36,6 +37,8 @@ Custom definition files and JavaScript library support will be added in next rel
 
 ScreenShots:
 ===
+Keyword Highlight
+![Keyword Highlight](https://raw.githubusercontent.com/HerringtonDarkholme/typescript-repl/master/screenshot/color.png)
 
 Tab-completion
 ![Tab Completion](https://raw.githubusercontent.com/HerringtonDarkholme/typescript-repl/master/screenshot/completion.png)
@@ -53,5 +56,7 @@ And there is more for your exploration...
 
 TODO:
 ===
+If you need these, please let me know by making [issues](https://github.com/HerringtonDarkholme/typescript-repl/issues)!
+
 * Add customization
 * Add tsun config

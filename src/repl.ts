@@ -1,7 +1,9 @@
 /// <reference path='../typings/node.d.ts' />
 /// <reference path='../typings/colors.d.ts' />
+declare var Reflect: any
+declare var Promise: any
 
-import * as readline from 'readline'
+import * as readline from 'node-color-readline'
 import * as util from 'util'
 import * as vm from 'vm'
 import * as path from 'path'
@@ -18,15 +20,10 @@ import 'colors'
 const DUMMY_FILE = 'TSUN.repl.generated.ts'
 
 var options = require('optimist')
-  .usage('A TypeScript REPL.\nUsage: $0')
-  .alias('h', 'help')
-  .describe('h', 'Print this help message')
   .alias('f', 'force')
   .describe('f', 'Force tsun to evaluate code with ts errors.')
   .alias('v', 'verbose')
   .describe('v', 'Print compiled javascript before evaluating.')
-  .alias('o', 'out')
-  .describe('o', 'output directory relative to temporary')
   .describe('dere', "I-its's not like I'm an option so DON'T GET THE WRONG IDEA!")
 
 var argv = options.argv
@@ -43,6 +40,7 @@ var serviceHost: ts.LanguageServiceHost = {
     module: ts.ModuleKind.CommonJS,
     target: ts.ScriptTarget.ES5,
     newLine: ts.NewLineKind.LineFeed,
+    noEmitHelpers: true,
     experimentalDecorators: true
   }),
   getScriptFileNames: () => [DUMMY_FILE],
@@ -73,6 +71,7 @@ function getDeclarationFiles() {
     let typings = path.join(process.cwd(), './typings')
     let dirs = fs.readdirSync(typings)
     for (let dir of dirs) {
+      if (!/\.d\.ts$/.test(dir)) continue
       let p = path.join(typings, dir)
       if (fs.statSync(p).isFile()) {
         libPaths.push(p)
@@ -89,11 +88,47 @@ function getInitialCommands() {
 }
 
 
-
 function createReadLine() {
   return readline.createInterface({
     input: process.stdin,
     output: process.stdout,
+    colorize(line) {
+      let colorized = ''
+      let regex: [RegExp, string][] = [
+        [/\/\//, 'grey'], // comment
+        [/(['"`\/]).*?(?!<\\)\1/, 'cyan'], // string/regex, not rock solid
+        [/[+-]?(\d+\.?\d*|\d*\.\d+)([eE][+-]?\d+)?/, 'cyan'], // number
+        [/\b(true|false|null|undefined|NaN|Infinity)\b/, 'blue'],
+        [/\b(in|if|for|while|var|new|function|do|return|void|else|break)\b/, 'green'],
+        [/\b(instanceof|with|case|default|try|this|switch|continue|typeof)\b/, 'green'],
+        [/\b(let|yield|const|class|extends|interface|type)\b/, 'green'],
+        [/\b(try|catch|finally|Error|delete|throw|import|from|as)\b/, 'red'],
+        [/\b(eval|isFinite|isNaN|parseFloat|parseInt|decodeURI|decodeURIComponent)\b/, 'yellow'],
+        [/\b(encodeURI|encodeURIComponent|escape|unescape|Object|Function|Boolean|Error)\b/, 'yellow'],
+        [/\b(Number|Math|Date|String|RegExp|Array|JSON|=>|string|number|boolean)\b/, 'yellow'],
+        [/\b(console|module|process|require|arguments|fs|global)\b/, 'yellow'],
+        [/\b(private|public|protected|abstract|namespace|declare|@)\b/, 'magenta'], // TS keyword
+      ]
+      while (line !== '') {
+        let start = +Infinity
+        let color = ''
+        let length = 0
+        for (let reg of regex) {
+          let match = reg[0].exec(line)
+          if (match && match.index < start) {
+            start = match.index
+            color = reg[1]
+            length = match[0].length
+          }
+        }
+        colorized += line.substring(0, start)
+        if (color) {
+          colorized += (<any>line.substr(start, length))[color]
+        }
+        line = line.substr(start + length)
+      }
+      return colorized
+    },
     completer(line: string) {
       // append new line to get completions, then revert new line
       versionCounter++
@@ -134,6 +169,49 @@ function createContext() {
   for (var g in global) {
     context[g] = global[g];
   }
+
+  // generate helper, adapted from TypeScript compiler
+  context['__extends'] = function (d: any, b: any) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    let __: any = function () { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+  }
+
+  context['__assign'] = function(t: any) {
+    for (var s: any, i = 1, n = arguments.length; i < n; i++) {
+      s = arguments[i];
+      for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+        t[p] = s[p];
+    }
+    return t
+  }
+
+  // emit output for the __decorate helper function
+  context['__decorate'] = function (decorators: any, target: any, key: any, desc: any) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d: any;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+  }
+
+  // emit output for the __metadata helper function
+  context['__metadata'] = function (k: any, v: any) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+  }
+
+  // emit output for the __param helper function
+  context['__param'] = function (paramIndex: any, decorator: any) {
+    return function (target: any, key: any) { decorator(target, key, paramIndex); }
+  };
+
+  context['__awaiter'] = function (thisArg: any, _arguments: any, P: any, generator: any) {
+    return new (P || (P = Promise))(function (resolve: any, reject: any) {
+      function fulfilled(value: any) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+      function rejected(value: any) { try { step(generator.throw(value)); } catch (e) { reject(e); } }
+      function step(result: any) { result.done ? resolve(result.value) : new P(function (resolve: any) { resolve(result.value); }).then(fulfilled, rejected); }
+      step((generator = generator.apply(thisArg, _arguments)).next());
+    });
+  };
   context.console = new Console(process.stdout);
   context.global = context;
   context.global.global = context;
@@ -306,7 +384,6 @@ tsun repl commands
 
 function getDiagnostics(): string[] {
   let allDiagnostics = service.getCompilerOptionsDiagnostics()
-    .concat(service.getSyntacticDiagnostics(DUMMY_FILE))
     .concat(service.getSemanticDiagnostics(DUMMY_FILE))
 
   return allDiagnostics.map(diagnostic => {
@@ -369,18 +446,25 @@ function waitForMoreLines(code: string, indentLevel: number) {
 }
 
 function replLoop(prompt: string, code: string) {
-  code = buffer + '\n' + code;
-  var openCurly = (code.match(/\{/g) || []).length;
-  var closeCurly = (code.match(/\}/g) || []).length;
-  var openParen = (code.match(/\(/g) || []).length;
-  var closeParen = (code.match(/\)/g) || []).length;
-  var templateClosed = (code.match(/`/g) || []).length % 2 === 0;
-  if (openCurly === closeCurly && openParen === closeParen && templateClosed) {
+  let fallback = codes
+  let userInput = code
+  versionCounter++
+  code = buffer + '\n' + code
+  codes += code
+  let diagnostics = service.getSyntacticDiagnostics(DUMMY_FILE)
+  if (diagnostics.length === 0) {
+    codes = fallback
     startEvaluate(code)
     repl(defaultPrompt)
   } else {
-    let indentLevel = openCurly - closeCurly + openParen - closeParen;
-    waitForMoreLines(code, indentLevel)
+    codes = fallback
+    let openCurly = (code.match(/\{/g) || []).length;
+    let closeCurly = (code.match(/\}/g) || []).length;
+    let openParen = (code.match(/\(/g) || []).length;
+    let closeParen = (code.match(/\)/g) || []).length;
+    // at lease one indent in multiline
+    let indentLevel = (openCurly - closeCurly + openParen - closeParen) || 1
+    waitForMoreLines(code, indentLevel || 1)
   }
 }
 
