@@ -7,8 +7,12 @@ import * as fs from 'fs'
 import {repl, defaultPrompt} from './repl'
 
 const DUMMY_FILE = 'TSUN.repl.generated.ts'
+
+// codes has been accepted by service, as opposed to codes in buffer and user input
+// if some action fails to compile, acceptedCodes will be rolled-back
+export var acceptedCodes = getInitialCommands()
+// a counter indicating repl edition history, every action will increment it
 var versionCounter = 0
-export var codes = getInitialCommands()
 
 var serviceHost: ts.LanguageServiceHost = {
   getCompilationSettings: () => ({
@@ -25,7 +29,7 @@ var serviceHost: ts.LanguageServiceHost = {
   getScriptSnapshot: (fileName) => {
     try {
       var text = fileName === DUMMY_FILE
-        ? codes
+        ? acceptedCodes
         : fs.readFileSync(fileName).toString()
       return ts.ScriptSnapshot.fromString(text)
     } catch(e) {
@@ -47,7 +51,7 @@ export var getDeclarations = (function() {
   }
   return function(cached: boolean = false) {
     if (!cached) {
-      declarations[DUMMY_FILE] = collectDeclaration(ts.createSourceFile(DUMMY_FILE, codes, ts.ScriptTarget.Latest))
+      declarations[DUMMY_FILE] = collectDeclaration(ts.createSourceFile(DUMMY_FILE, acceptedCodes, ts.ScriptTarget.Latest))
     }
     return declarations
   }
@@ -131,16 +135,16 @@ function getTypeInfo(decl: ts.Node, file: string, detailed: boolean): string[] {
 export function completer(line: string) {
   // append new line to get completions, then revert new line
   versionCounter++
-  let originalCodes = codes
-  codes += line
+  let originalCodes = acceptedCodes
+  acceptedCodes += line
   if (':' === line[0]) {
     let candidates = ['type', 'detail', 'source', 'paste', 'clear', 'print', 'help']
     candidates = candidates.map(c => ':' + c).filter(c => c.indexOf(line) >= 0)
     return [candidates, line.trim()]
   }
-  let completions = service.getCompletionsAtPosition(DUMMY_FILE, codes.length)
+  let completions = service.getCompletionsAtPosition(DUMMY_FILE, acceptedCodes.length)
   if (!completions) {
-    codes = originalCodes
+    acceptedCodes = originalCodes
     return [[], line]
   }
   let prefix = /[A-Za-z_$]+$/.exec(line)
@@ -154,7 +158,7 @@ export function completer(line: string) {
   } else {
     candidates = completions.entries.map(entry => entry.name)
   }
-  codes = originalCodes
+  acceptedCodes = originalCodes
   return [candidates, prefix ? prefix[0] : line]
 }
 
@@ -176,14 +180,14 @@ export function getDiagnostics(code: string): string[] {
   let allDiagnostics = service.getCompilerOptionsDiagnostics()
     .concat(service.getSemanticDiagnostics(DUMMY_FILE))
 
-  let fallback = codes
-  codes += code
+  let fallback = acceptedCodes
+  acceptedCodes += code
   versionCounter++
   let ret = allDiagnostics.map(diagnostic => {
     let message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n')
     return message
   })
-  if (ret.length) codes = fallback
+  if (ret.length) acceptedCodes = fallback
   return ret
 }
 
@@ -197,14 +201,14 @@ export function getCurrentCode() {
 }
 
 export function testSyntacticError(code: string) {
-  let fallback = codes
+  let fallback = acceptedCodes
   versionCounter++
-  codes += code
+  acceptedCodes += code
   let diagnostics = service.getSyntacticDiagnostics(DUMMY_FILE)
-  codes = fallback
+  acceptedCodes = fallback
   return diagnostics
 }
 
 export function clearHistory() {
-  codes = getInitialCommands()
+  acceptedCodes = getInitialCommands()
 }

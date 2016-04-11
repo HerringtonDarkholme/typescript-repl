@@ -12,7 +12,7 @@ import * as path from 'path'
 import * as child_process from 'child_process'
 import * as fs from 'fs'
 
-import {completer, codes, getType, getDiagnostics, getCurrentCode, getDeclarations, testSyntacticError, clearHistory} from './service'
+import {completer, acceptedCodes, getType, getDiagnostics, getCurrentCode, getDeclarations, testSyntacticError, clearHistory} from './service'
 
 var Module = require('module')
 
@@ -29,7 +29,8 @@ var argv = options.argv
 var verbose = argv.verbose
 
 export var defaultPrompt = '> ', moreLinesPrompt = '..'
-var buffer = ''
+// a buffer for multiline editing
+var multilineBuffer = ''
 var rl = createReadLine()
 
 function colorize(line: string) {
@@ -76,7 +77,7 @@ function createReadLine() {
     output: process.stdout,
     colorize: colorize,
     completer(line: string) {
-      let code = buffer + '\n' + line
+      let code = multilineBuffer + '\n' + line
 	  return completer(code)
     }
   })
@@ -195,7 +196,7 @@ tsun repl commands
 
 var context = createContext();
 function startEvaluate(code: string) {
-  buffer = ''
+  multilineBuffer = ''
   let allDiagnostics = getDiagnostics(code)
   if (allDiagnostics.length) {
     console.warn(allDiagnostics.join('\n').bold.red)
@@ -222,19 +223,19 @@ function startEvaluate(code: string) {
 function waitForMoreLines(code: string, indentLevel: number) {
   if (/\n{2}$/.test(code)) {
     console.log('You typed two blank lines! start new command'.yellow)
-    buffer = ''
+    multilineBuffer = ''
     return repl(defaultPrompt)
   }
   var nextPrompt = '';
   for (var i = 0; i < indentLevel; i++) {
     nextPrompt += moreLinesPrompt;
   }
-  buffer = code
+  multilineBuffer = code
   repl(nextPrompt);
 }
 
 function replLoop(prompt: string, code: string) {
-  code = buffer + '\n' + code
+  code = multilineBuffer + '\n' + code
   let diagnostics = testSyntacticError(code)
   if (diagnostics.length === 0) {
     startEvaluate(code)
@@ -251,7 +252,7 @@ function replLoop(prompt: string, code: string) {
 }
 
 function addLine(line: string) {
-  buffer += '\n' + line
+  multilineBuffer += '\n' + line
 }
 
 function enterPasteMode() {
@@ -263,7 +264,7 @@ function enterPasteMode() {
   rl.once('close', (d: any) => {
     console.log('evaluating...'.cyan)
     rl.removeListener('line', addLine)
-    startEvaluate(buffer)
+    startEvaluate(multilineBuffer)
     rl = createReadLine()
     repl(defaultPrompt = oldPrompt)
   })
@@ -331,15 +332,15 @@ export function repl(prompt: string) {
     }
     if (/^:clear/.test(code)) {
       clearHistory()
-      buffer = ''
+      multilineBuffer = ''
       context = createContext()
       return repl(defaultPrompt)
     }
     if (/^:print/.test(code)) {
-      console.log(colorize(codes))
+      console.log(colorize(acceptedCodes))
       return repl(prompt)
     }
-    if (/^:paste/.test(code) && !buffer) {
+    if (/^:paste/.test(code) && !multilineBuffer) {
       return enterPasteMode()
     }
     if (argv.dere && /^:baka/.test(code)) {
