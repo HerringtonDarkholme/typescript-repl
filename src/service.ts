@@ -14,14 +14,57 @@ export var acceptedCodes = getInitialCommands()
 // a counter indicating repl edition history, every action will increment it
 var versionCounter = 0
 
+function findConfigFile(searchPath: string) {
+  while (true) {
+    const fileName = path.join(searchPath, "tsconfig.json");
+    if (fs.existsSync(fileName)) {
+      return fileName;
+    }
+    const parentPath = path.dirname(searchPath);
+    if (parentPath === searchPath) {
+      break;
+    }
+    searchPath = parentPath;
+  }
+  return undefined;
+}
+
+const DEFAULT_OPTIONS: ts.CompilerOptions = {
+  module: ts.ModuleKind.CommonJS,
+  target: ts.ScriptTarget.ES5,
+  newLine: ts.NewLineKind.LineFeed,
+  noEmitHelpers: true,
+  experimentalDecorators: true
+}
+
+function compileOption(): () => ts.CompilerOptions {
+  let configFile = findConfigFile(process.cwd())
+  if (!configFile) {
+    return () => DEFAULT_OPTIONS
+  }
+
+  let configText = fs.readFileSync(configFile, 'utf8')
+  let result = ts.parseConfigFileTextToJson(configFile, configText)
+  if (result.error) {
+    return () => DEFAULT_OPTIONS
+  }
+  let optionsRet = ts.convertCompilerOptionsFromJson(
+    result.config.compilerOptions,
+    path.dirname(configFile)
+  )
+  if (optionsRet.errors.length) {
+    return () => DEFAULT_OPTIONS
+  }
+  let options = optionsRet.options
+
+  console.log(options)
+  options['noEmitHelpers'] = true
+  options['module'] = ts.ModuleKind.CommonJS
+  return () => options
+}
+
 var serviceHost: ts.LanguageServiceHost = {
-  getCompilationSettings: () => ({
-    module: ts.ModuleKind.CommonJS,
-    target: ts.ScriptTarget.ES5,
-    newLine: ts.NewLineKind.LineFeed,
-    noEmitHelpers: true,
-    experimentalDecorators: true
-  }),
+  getCompilationSettings: compileOption(),
   getScriptFileNames: () => [DUMMY_FILE],
   getScriptVersion: (fileName) => {
     return fileName === DUMMY_FILE && versionCounter.toString()

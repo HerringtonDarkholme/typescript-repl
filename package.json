@@ -8,7 +8,7 @@
     "node-color-readline": "git+https://github.com/HerringtonDarkholme/node-color-readline.git",
     "optimist": "^0.6.1",
     "temp": "^0.8.1",
-    "typescript": "1.9.0-dev.20160408"
+    "typescript": "1.8.10"
   },
   "scripts": {
     "prepublish": "tsc -m commonjs --outdir ./bin tsun.ts"
