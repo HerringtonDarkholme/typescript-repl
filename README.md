@@ -33,6 +33,8 @@ When used as interpreter, tsun will create a temporary directory as output direc
 So it is usually a problem to correctly resolve `node_modules` path or definition file like `*.d.ts`.
 Currently, tsun make two symbolic links for `node_modules` and `typings` directories in temporary directory, conventionally.
 
+TSUN will find the closest `tsconfig.json` relative to your working directory. You can now compile TypeScript to ES6 in node6+!
+
 Custom definition files and JavaScript library support will be added in next releases.
 
 ScreenShots:
@@ -59,4 +61,4 @@ TODO:
 If you need these, please let me know by making [issues](https://github.com/HerringtonDarkholme/typescript-repl/issues)!
 
 * Add customization
-* Add tsun config
+- [x] Add tsun config. Now tsun will read the closest tsconfig.json relative to the working directory you execute it.
