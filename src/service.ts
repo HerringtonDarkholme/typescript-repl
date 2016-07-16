@@ -1,9 +1,11 @@
 /// <reference path='../typings/node.d.ts' />
 /// <reference path='../typings/colors.d.ts' />
+/// <reference path='../typings/diff.d.ts' />
 
 import * as ts from 'typescript'
 import * as path from 'path'
 import * as fs from 'fs'
+import * as diff from 'diff'
 import {repl, defaultPrompt} from './repl'
 
 const DUMMY_FILE = 'TSUN.repl.generated.ts'
@@ -233,12 +235,13 @@ export function getDiagnostics(code: string): string[] {
   return ret
 }
 
-var storedLine = 0
+let lastOutput = ''
 export function getCurrentCode() {
   let emit = service.getEmitOutput(DUMMY_FILE)
-  let lines = emit.outputFiles[0].text.split('\r\n').filter(k => !!k)
-  let ret = lines.slice(storedLine).join('\n')
-  storedLine = lines.length
+  let output = emit.outputFiles[0].text
+  let changes = diff.diffLines(lastOutput, output)
+  let ret = changes.filter(c => c.added).map(c => c.value).join('\n')
+  lastOutput = output
   return ret
 }
 
@@ -253,5 +256,5 @@ export function testSyntacticError(code: string) {
 
 export function clearHistory() {
   acceptedCodes = getInitialCommands()
-  storedLine = 0
+  lastOutput = ''
 }
