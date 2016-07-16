@@ -57,7 +57,6 @@ function compileOption(): () => ts.CompilerOptions {
   }
   let options = optionsRet.options
 
-  console.log(options)
   options['noEmitHelpers'] = true
   options['module'] = ts.ModuleKind.CommonJS
   return () => options
@@ -254,4 +253,5 @@ export function testSyntacticError(code: string) {
 
 export function clearHistory() {
   acceptedCodes = getInitialCommands()
+  storedLine = 0
 }
