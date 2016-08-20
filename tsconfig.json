@@ -3,7 +3,6 @@
     "target": "ES5",
     "module": "commonjs",
     "noImplicitAny": true,
-    "outDir": "./bin",
-    "rootDir": "src"
+    "outDir": "./bin"
   }
 }
