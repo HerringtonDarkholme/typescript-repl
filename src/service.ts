@@ -97,7 +97,7 @@ var service = ts.createLanguageService(serviceHost)
 
 export var getDeclarations = (function() {
   var declarations: {[fileName: string]: {[name: string]: ts.DeclarationName[]}} = {}
-  let declFiles = getDeclarationFiles() // .concat(path.join(__dirname, '../../node_modules/typescript/lib/lib.core.es6.d.ts'))
+  let declFiles = getDeclarationFiles()
   for (let file of declFiles) {
     let text = readFileSync(file, 'utf8')
     declarations[file] = collectDeclaration(ts.createSourceFile(file, text, ts.ScriptTarget.Latest))

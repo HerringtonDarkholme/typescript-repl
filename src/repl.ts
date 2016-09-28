@@ -138,8 +138,6 @@ function printHelp() {
   console.log(`
 tsun repl commands
 :type symbol       print the type of an identifier
-:detail symbol     print details of identifier
-:source symbol     print source of identifier
 :clear             clear all the code
 :print             print code input so far
 :help              print this manual
@@ -266,10 +264,10 @@ function getSource(name: string) {
 export function repl(prompt: string) {
   'use strict';
   rl.question(prompt, function (code: string) {
-    if (/^:(type|detail)/.test(code)) {
+    if (/^:(type)/.test(code)) {
       let identifier = code.split(' ')[1]
       if (!identifier) {
-        console.log(':type|detail command need names!'.red)
+        console.log(':type command need names!'.red)
         return repl(prompt)
       }
       getType(identifier, code.indexOf('detail') === 1)
