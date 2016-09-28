@@ -4,8 +4,6 @@ import * as fs from 'fs'
 import * as diff from 'diff'
 import {repl, defaultPrompt} from './repl'
 
-const DUMMY_FILE = 'TSUN.repl.generated.ts'
-
 // codes has been accepted by service, as opposed to codes in buffer and user input
 // if some action fails to compile, acceptedCodes will be rolled-back
 export var acceptedCodes = getInitialCommands()
@@ -59,6 +57,9 @@ function compileOption(): () => ts.CompilerOptions {
   options.module = ts.ModuleKind.CommonJS
   return () => options
 }
+
+const resolvedOpt = compileOption()()
+const DUMMY_FILE = resolvedOpt.rootDir ? resolvedOpt.rootDir + 'TSUN.repl.generated.ts': 'TSUN.repl.generated.ts'
 
 var serviceHost: ts.LanguageServiceHost = {
   getCompilationSettings: compileOption(),
