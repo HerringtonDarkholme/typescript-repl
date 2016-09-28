@@ -90,7 +90,7 @@ var serviceHost: ts.LanguageServiceHost = {
   getCurrentDirectory: () => CWD,
   getDirectories: ts.sys.getDirectories,
   directoryExists: ts.sys.directoryExists,
-  getDefaultLibFileName: (options) => (console.log(options), ts.getDefaultLibFilePath(options))
+  getDefaultLibFileName: options => ts.getDefaultLibFilePath(options)
 }
 
 var service = ts.createLanguageService(serviceHost)
