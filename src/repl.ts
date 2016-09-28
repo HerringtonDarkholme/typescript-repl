@@ -77,7 +77,7 @@ function createReadLine() {
     colorize: colorize,
     completer(line: string) {
       let code = multilineBuffer + '\n' + line
-      return completer(code)
+      return completer(code) as any
     }
   })
 }
@@ -88,51 +88,9 @@ function createContext() {
   var context: any;
   context = vm.createContext();
   for (var g in global) {
-    context[g] = global[g];
+    context[g] = (global as any)[g];
   }
 
-  // generate helper, adapted from TypeScript compiler
-  context['__extends'] = function (d: any, b: any) {
-    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
-    let __: any = function () { this.constructor = d; }
-    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-  }
-
-  context['__assign'] = function(t: any) {
-    for (var s: any, i = 1, n = arguments.length; i < n; i++) {
-      s = arguments[i];
-      for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
-        t[p] = s[p];
-    }
-    return t
-  }
-
-  // emit output for the __decorate helper function
-  context['__decorate'] = function (decorators: any, target: any, key: any, desc: any) {
-    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d: any;
-    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
-    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
-    return c > 3 && r && Object.defineProperty(target, key, r), r;
-  }
-
-  // emit output for the __metadata helper function
-  context['__metadata'] = function (k: any, v: any) {
-    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
-  }
-
-  // emit output for the __param helper function
-  context['__param'] = function (paramIndex: any, decorator: any) {
-    return function (target: any, key: any) { decorator(target, key, paramIndex); }
-  };
-
-  context['__awaiter'] = function (thisArg: any, _arguments: any, P: any, generator: any) {
-    return new (P || (P = Promise))(function (resolve: any, reject: any) {
-      function fulfilled(value: any) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-      function rejected(value: any) { try { step(generator.throw(value)); } catch (e) { reject(e); } }
-      function step(result: any) { result.done ? resolve(result.value) : new P(function (resolve: any) { resolve(result.value); }).then(fulfilled, rejected); }
-      step((generator = generator.apply(thisArg, _arguments)).next());
-    });
-  };
   context.console = new Console(process.stdout);
   context.global = context;
   context.global.global = context;

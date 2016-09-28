@@ -1,5 +1,4 @@
-/// <reference path='./typings/node.d.ts' />
-
+import 'ts-helper'
 import './src/register'
 
 import {runCode} from './src/executor'

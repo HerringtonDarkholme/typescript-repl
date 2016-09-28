@@ -3,6 +3,9 @@
     "target": "ES5",
     "module": "commonjs",
     "noImplicitAny": true,
-    "outDir": "./bin"
-  }
+    "noImplicitThis": true,
+    "noImplicitReturns": true,
+    "outDir": "bin"
+  },
+  "exclude": ["node_modules", "bin"]
 }
