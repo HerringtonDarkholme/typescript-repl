@@ -64,7 +64,7 @@ var serviceHost: ts.LanguageServiceHost = {
   getCompilationSettings: compileOption(),
   getScriptFileNames: () => [DUMMY_FILE],
   getScriptVersion: (fileName) => {
-    return fileName === DUMMY_FILE && versionCounter.toString()
+    return fileName === DUMMY_FILE ? versionCounter.toString() : '1'
   },
   getScriptSnapshot: (fileName) => {
     try {
@@ -73,7 +73,7 @@ var serviceHost: ts.LanguageServiceHost = {
         : fs.readFileSync(fileName).toString()
       return ts.ScriptSnapshot.fromString(text)
     } catch(e) {
-
+      return ts.ScriptSnapshot.fromString('')
     }
   },
   getCurrentDirectory: () => process.cwd(),

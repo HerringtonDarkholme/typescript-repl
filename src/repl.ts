@@ -234,7 +234,8 @@ function getSource(name: string) {
     if (names[name]) {
       let decl = names[name]
       let pager = process.env.PAGER
-      let text = decl[0].parent.getFullText()
+      let parent = decl[0].parent
+      let text =  parent ? parent.getFullText() : ''
       if (!pager || text.split('\n').length < 24) {
         console.log(text)
         repl(defaultPrompt)
