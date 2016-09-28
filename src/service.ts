@@ -55,8 +55,8 @@ function compileOption(): () => ts.CompilerOptions {
   }
   let options = optionsRet.options
 
-  options['noEmitHelpers'] = true
-  options['module'] = ts.ModuleKind.CommonJS
+  options.noEmitHelpers = true
+  options.module = ts.ModuleKind.CommonJS
   return () => options
 }
 
@@ -77,14 +77,14 @@ var serviceHost: ts.LanguageServiceHost = {
     }
   },
   getCurrentDirectory: () => process.cwd(),
-  getDefaultLibFileName: (options) => path.join(__dirname, '../../node_modules/typescript/lib/lib.core.es6.d.ts')
+  getDefaultLibFileName: (options) => ts.getDefaultLibFilePath(options)
 }
 
 var service = ts.createLanguageService(serviceHost, ts.createDocumentRegistry())
 
 export var getDeclarations = (function() {
   var declarations: {[fileName: string]: {[name: string]: ts.DeclarationName[]}} = {}
-  let declFiles = getDeclarationFiles().concat(path.join(__dirname, '../../node_modules/typescript/lib/lib.core.es6.d.ts'))
+  let declFiles = getDeclarationFiles() // .concat(path.join(__dirname, '../../node_modules/typescript/lib/lib.core.es6.d.ts'))
   for (let file of declFiles) {
     let text = fs.readFileSync(file, 'utf8')
     declarations[file] = collectDeclaration(ts.createSourceFile(file, text, ts.ScriptTarget.Latest))
@@ -98,7 +98,7 @@ export var getDeclarations = (function() {
 })()
 
 function getDeclarationFiles() {
-  var libPaths = [path.resolve(__dirname, '../../typings/node.d.ts')]
+  var libPaths = [path.resolve(__dirname, '../../node_modules/@types/node/index.d.ts')]
   try {
     let typings = path.join(process.cwd(), './typings')
     let dirs = fs.readdirSync(typings)
