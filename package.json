@@ -1,5 +1,6 @@
 {
   "name": "tsun",
+  "preferGlobal": true,
   "version": "0.2.6",
   "description": "TSUN: a repl for TypeScript Upgraded Node",
   "bin": "./bin/tsun",
@@ -9,9 +10,12 @@
     "node-color-readline": "^1.0.1",
     "optimist": "^0.6.1",
     "temp": "^0.8.1",
-    "ts-helper": "0.0.1",
+    "tslib": "^1.0.0",
     "typescript": "^2.0.3"
   },
+  "files": [
+    "bin"
+  ],
   "scripts": {
     "prepublish": "tsc"
   },

@@ -1,4 +1,7 @@
-import 'ts-helper'
+import * as tslib from 'tslib'
+import {assign} from './src/util'
+assign(global, tslib)
+
 import './src/register'
 
 import {runCode} from './src/executor'

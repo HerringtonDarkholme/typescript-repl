@@ -1,8 +1,8 @@
 import * as ts from 'typescript'
 import * as path from 'path'
-import * as fs from 'fs'
+import { readdirSync, existsSync, readFileSync, statSync } from 'fs'
 import * as diff from 'diff'
-import {repl, defaultPrompt} from './repl'
+import {assign} from './util'
 
 // codes has been accepted by service, as opposed to codes in buffer and user input
 // if some action fails to compile, acceptedCodes will be rolled-back
@@ -13,7 +13,7 @@ var versionCounter = 0
 function findConfigFile(searchPath: string) {
   while (true) {
     const fileName = path.join(searchPath, "tsconfig.json");
-    if (fs.existsSync(fileName)) {
+    if (existsSync(fileName)) {
       return fileName;
     }
     const parentPath = path.dirname(searchPath);
@@ -25,12 +25,22 @@ function findConfigFile(searchPath: string) {
   return undefined;
 }
 
+const CWD = process.cwd()
+
 const DEFAULT_OPTIONS: ts.CompilerOptions = {
-  module: ts.ModuleKind.CommonJS,
   target: ts.ScriptTarget.ES5,
   newLine: ts.NewLineKind.LineFeed,
+  experimentalDecorators: true,
+  emitDecoratorMetadata: true,
+  noUnusedLocals: false,
+  configFilePath: path.join(CWD, 'tsconfig.json'),
+}
+
+// these option must be set in repl environment
+const OVERRIDE_OPTIONS: ts.CompilerOptions = {
+  module: ts.ModuleKind.CommonJS,
   noEmitHelpers: true,
-  experimentalDecorators: true
+  noUnusedLocals: false
 }
 
 function compileOption(): () => ts.CompilerOptions {
@@ -39,22 +49,22 @@ function compileOption(): () => ts.CompilerOptions {
     return () => DEFAULT_OPTIONS
   }
 
-  let configText = fs.readFileSync(configFile, 'utf8')
+  let configText = readFileSync(configFile, 'utf8')
   let result = ts.parseConfigFileTextToJson(configFile, configText)
   if (result.error) {
     return () => DEFAULT_OPTIONS
   }
-  let optionsRet = ts.convertCompilerOptionsFromJson(
+  let optionOrError = ts.convertCompilerOptionsFromJson(
     result.config.compilerOptions,
     path.dirname(configFile)
   )
-  if (optionsRet.errors.length) {
+  if (optionOrError.errors.length) {
     return () => DEFAULT_OPTIONS
   }
-  let options = optionsRet.options
+  let options = optionOrError.options
 
-  options.noEmitHelpers = true
-  options.module = ts.ModuleKind.CommonJS
+  // override some impossible option
+  assign(options, OVERRIDE_OPTIONS)
   return () => options
 }
 
@@ -71,23 +81,25 @@ var serviceHost: ts.LanguageServiceHost = {
     try {
       var text = fileName === DUMMY_FILE
         ? acceptedCodes
-        : fs.readFileSync(fileName).toString()
+        : readFileSync(fileName).toString()
       return ts.ScriptSnapshot.fromString(text)
     } catch(e) {
-      return ts.ScriptSnapshot.fromString('')
+      return undefined
     }
   },
-  getCurrentDirectory: () => process.cwd(),
-  getDefaultLibFileName: (options) => ts.getDefaultLibFilePath(options)
+  getCurrentDirectory: () => CWD,
+  getDirectories: ts.sys.getDirectories,
+  directoryExists: ts.sys.directoryExists,
+  getDefaultLibFileName: (options) => (console.log(options), ts.getDefaultLibFilePath(options))
 }
 
-var service = ts.createLanguageService(serviceHost, ts.createDocumentRegistry())
+var service = ts.createLanguageService(serviceHost)
 
 export var getDeclarations = (function() {
   var declarations: {[fileName: string]: {[name: string]: ts.DeclarationName[]}} = {}
   let declFiles = getDeclarationFiles() // .concat(path.join(__dirname, '../../node_modules/typescript/lib/lib.core.es6.d.ts'))
   for (let file of declFiles) {
-    let text = fs.readFileSync(file, 'utf8')
+    let text = readFileSync(file, 'utf8')
     declarations[file] = collectDeclaration(ts.createSourceFile(file, text, ts.ScriptTarget.Latest))
   }
   return function(cached: boolean = false) {
@@ -102,11 +114,11 @@ function getDeclarationFiles() {
   var libPaths = [path.resolve(__dirname, '../../node_modules/@types/node/index.d.ts')]
   try {
     let typings = path.join(process.cwd(), './typings')
-    let dirs = fs.readdirSync(typings)
+    let dirs = readdirSync(typings)
     for (let dir of dirs) {
       if (!/\.d\.ts$/.test(dir)) continue
       let p = path.join(typings, dir)
-      if (fs.statSync(p).isFile()) {
+      if (statSync(p).isFile()) {
         libPaths.push(p)
       }
     }

@@ -1,6 +1,3 @@
-declare var Reflect: any
-declare var Promise: any
-
 import * as readline from 'node-color-readline'
 import * as util from 'util'
 import * as vm from 'vm'
@@ -9,7 +6,12 @@ import * as path from 'path'
 import * as child_process from 'child_process'
 import * as fs from 'fs'
 
-import {completer, acceptedCodes, getType, getDiagnostics, getCurrentCode, getDeclarations, testSyntacticError, clearHistory} from './service'
+import {
+  completer, acceptedCodes, testSyntacticError, clearHistory,
+  getType, getDiagnostics, getCurrentCode, getDeclarations,
+} from './service'
+
+import {assign} from './util'
 
 var Module = require('module')
 
@@ -87,9 +89,7 @@ function createContext() {
   var builtinLibs = require('repl')._builtinLibs
   var context: any;
   context = vm.createContext();
-  for (var g in global) {
-    context[g] = (global as any)[g];
-  }
+  assign(context, global)
 
   context.console = new Console(process.stdout);
   context.global = context;
@@ -191,7 +191,7 @@ function waitForMoreLines(code: string, indentLevel: number) {
   repl(nextPrompt);
 }
 
-function replLoop(prompt: string, code: string) {
+function replLoop(_: string, code: string) {
   code = multilineBuffer + '\n' + code
   let diagnostics = testSyntacticError(code)
   if (diagnostics.length === 0) {
@@ -218,7 +218,7 @@ function enterPasteMode() {
   let oldPrompt = defaultPrompt
   rl.setPrompt('')
   rl.on('line', addLine)
-  rl.once('close', (d: any) => {
+  rl.once('close', () => {
     console.log('evaluating...'.cyan)
     rl.removeListener('line', addLine)
     startEvaluate(multilineBuffer)
