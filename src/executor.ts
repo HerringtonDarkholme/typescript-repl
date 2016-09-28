@@ -1,5 +1,3 @@
-/// <reference path='../typings/node.d.ts' />
-
 import * as ts from 'typescript'
 import * as path from 'path'
 import * as child_process from 'child_process'

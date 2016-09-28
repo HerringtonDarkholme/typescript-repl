@@ -1,7 +1,3 @@
-/// <reference path='../typings/node.d.ts' />
-/// <reference path='../typings/colors.d.ts' />
-/// <reference path='../typings/diff.d.ts' />
-
 import * as ts from 'typescript'
 import * as path from 'path'
 import * as fs from 'fs'

@@ -1,6 +1,3 @@
-/// <reference path='../typings/node.d.ts' />
-/// <reference path='../typings/colors.d.ts' />
-
 declare var Reflect: any
 declare var Promise: any
 
@@ -17,6 +14,8 @@ import {completer, acceptedCodes, getType, getDiagnostics, getCurrentCode, getDe
 var Module = require('module')
 
 import 'colors'
+
+
 
 var options = require('optimist')
   .alias('f', 'force')
@@ -78,7 +77,7 @@ function createReadLine() {
     colorize: colorize,
     completer(line: string) {
       let code = multilineBuffer + '\n' + line
-	  return completer(code)
+      return completer(code)
     }
   })
 }
