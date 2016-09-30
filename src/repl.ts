@@ -1,6 +1,8 @@
-import * as readline from 'node-color-readline'
+import * as readlineTTY from 'node-color-readline'
+import * as readlineNoTTY from 'readline'
 import * as util from 'util'
 import * as vm from 'vm'
+import * as tty from 'tty'
 import {Console} from 'console'
 import * as path from 'path'
 import * as child_process from 'child_process'
@@ -17,7 +19,8 @@ var Module = require('module')
 
 import 'colors'
 
-
+// node-color-readline blows up in non-TTY envs
+const readline = (process.stdout as tty.WriteStream).isTTY ? readlineTTY : readlineNoTTY
 
 var options = require('optimist')
   .alias('f', 'force')
