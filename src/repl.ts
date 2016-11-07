@@ -53,6 +53,7 @@ function colorize(line: string) {
     [/\b(Number|Math|Date|String|RegExp|Array|JSON|=>|string|number|boolean)\b/, 'yellow'],
     [/\b(console|module|process|require|arguments|fs|global)\b/, 'yellow'],
     [/\b(private|public|protected|abstract|namespace|declare|@)\b/, 'magenta'], // TS keyword
+    [/\b(keyof|readonly)\b/, 'green'],
   ]
   while (line !== '') {
     let start = +Infinity
@@ -141,6 +142,7 @@ function printHelp() {
   console.log(`
 tsun repl commands
 :type symbol       print the type of an identifier
+:doc  symbol       print the documentation for an identifier
 :clear             clear all the code
 :print             print code input so far
 :help              print this manual
@@ -267,13 +269,18 @@ function getSource(name: string) {
 export function repl(prompt: string) {
   'use strict';
   rl.question(prompt, function (code: string) {
-    if (/^:(type)/.test(code)) {
+    if (/^:(type|doc)/.test(code)) {
       let identifier = code.split(' ')[1]
       if (!identifier) {
         console.log(':type command need names!'.red)
         return repl(prompt)
       }
-      getType(identifier, code.indexOf('detail') === 1)
+      const ret = getType(identifier, code.indexOf('doc') === 1)
+      if (ret) {
+        console.log(colorize(ret))
+      } else {
+        console.log(`no info for "${identifier}" is found`.yellow)
+      }
       return repl(prompt)
     }
     if (/^:source/.test(code)) {

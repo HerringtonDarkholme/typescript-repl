@@ -142,48 +142,6 @@ function collectDeclaration(sourceFile: any): any {
   return ret
 }
 
-function getMemberInfo(member: ts.ClassElement, file: string, parentDeclaration: any): string {
-  // member info is stored as the first
-  let pos = member.getStart()
-  let quickInfo = service.getQuickInfoAtPosition(file, pos)
-  if (quickInfo) return ts.displayPartsToString(quickInfo.displayParts)
-  // DeclarationName includes Identifier which does not have name and will not go here
-  let name = member.name && member.name.getText()
-  if (!name) return member.getText()
-  let declarations = getDeclarations(true)[file][name]
-  for (let decl of declarations) {
-    let d: any = decl
-    if (parentDeclaration.parent.name.getText() == d.parent.parent.name.getText()) {
-      let quickInfo = service.getQuickInfoAtPosition(file, d.getEnd())
-      return ts.displayPartsToString(quickInfo.displayParts)
-    }
-  }
-  return member.getText()
-}
-
-function getTypeInfo(decl: ts.Node, file: string, detailed: boolean): string[] {
-  // getStart will count comment
-  let pos = decl.getEnd()
-  let ret = [`declaration in: ${file}`]
-  let quickInfo = service.getQuickInfoAtPosition(file, pos)
-  ret.push(ts.displayPartsToString(quickInfo.displayParts))
-  if (!detailed) return ret
-  let parentName = ret[1].split(' ')[1]
-  let symbolType = quickInfo.displayParts[0].text
-  if ( symbolType === 'interface' || symbolType === 'class') {
-    let classLikeDeclaration = <ts.ClassLikeDeclaration>decl.parent
-    for (let member of classLikeDeclaration.members) {
-      let memberInfo = getMemberInfo(member, file, decl).split('\n').map(mInfo => {
-        mInfo = mInfo.replace(new RegExp(parentName + '\\.', 'g'), '')
-        return '    ' + mInfo
-      })
-      ret.push(memberInfo.join('\n'))
-    }
-  }
-  return ret
-
-}
-
 
 export function completer(line: string) {
   // append new line to get completions, then revert new line
@@ -215,18 +173,19 @@ export function completer(line: string) {
   return [candidates, prefix ? prefix[0] : line]
 }
 
-export function getType(name: string, detailed: boolean) {
-  let declarations = getDeclarations()
-  for (let file in declarations) {
-    let names = declarations[file]
-    if (names[name]) {
-      let decl = names[name][0]
-      let infoString = getTypeInfo(decl, file, detailed)
-      console.log(infoString.join('\n').cyan)
-      return
-    }
+export function getType(name: string, detailed: boolean): string {
+  versionCounter++
+  let originalCodes = acceptedCodes
+  acceptedCodes += '\n;' + name
+  let typeInfo = service.getQuickInfoAtPosition(DUMMY_FILE, acceptedCodes.length -  1)
+  let ret = ''
+  if (typeInfo) {
+    ret = detailed
+      ? ts.displayPartsToString(typeInfo.documentation)
+      : ts.displayPartsToString(typeInfo.displayParts)
   }
-  console.log(`identifier ${name} not found`.yellow)
+  acceptedCodes = originalCodes
+  return ret
 }
 
 export function getDiagnostics(code: string): string[] {
