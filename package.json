@@ -1,7 +1,7 @@
 {
   "name": "tsun",
   "preferGlobal": true,
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "TSUN: a repl for TypeScript Upgraded Node",
   "bin": "./bin/tsun",
   "dependencies": {
@@ -11,8 +11,7 @@
     "optimist": "^0.6.1",
     "temp": "^0.8.1",
     "tslib": "^1.0.0",
-    "@types/node": "^6.0.41",
-    "typescript": "^2.0.3"
+    "@types/node": "^6.0.41"
   },
   "files": [
     "bin"
@@ -37,5 +36,8 @@
   "devDependencies": {
     "@types/colors": "^0.6.33",
     "@types/diff": "0.0.31"
+  },
+  "peerDependencies": {
+    "typescript": ">=2.0.0"
   }
 }
