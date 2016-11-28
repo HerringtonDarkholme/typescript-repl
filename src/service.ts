@@ -40,7 +40,8 @@ const DEFAULT_OPTIONS: ts.CompilerOptions = {
 const OVERRIDE_OPTIONS: ts.CompilerOptions = {
   module: ts.ModuleKind.CommonJS,
   noEmitHelpers: true,
-  noUnusedLocals: false
+  noUnusedLocals: false,
+  noEmit: false
 }
 
 function compileOption(): () => ts.CompilerOptions {

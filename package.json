@@ -1,7 +1,7 @@
 {
   "name": "tsun",
   "preferGlobal": true,
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "TSUN: a repl for TypeScript Upgraded Node",
   "bin": "./bin/tsun",
   "dependencies": {
@@ -35,7 +35,8 @@
   "bugs": "https://github.com/HerringtonDarkholme/typescript-repl/issues",
   "devDependencies": {
     "@types/colors": "^0.6.33",
-    "@types/diff": "0.0.31"
+    "@types/diff": "0.0.31",
+    "typescript": "^2.2.0-dev.20161128"
   },
   "peerDependencies": {
     "typescript": ">=2.0.0"
