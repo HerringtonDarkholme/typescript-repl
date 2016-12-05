@@ -146,7 +146,8 @@ tsun repl commands
 :clear             clear all the code
 :print             print code input so far
 :help              print this manual
-:paste             enter paste mode`.blue)
+:paste             enter paste mode
+:load filename     source typescript file in current context`.blue)
   if (argv.dere) {
   console.log(':baka              Who would like some pervert like you, baka~'.blue)
   }
@@ -230,6 +231,19 @@ function enterPasteMode() {
   })
 }
 
+function loadFile(filename: string) {
+  try {
+    console.log(`// loading file ${filename}`.cyan)
+    let file_contents: string = fs.readFileSync(filename, 'utf8')
+    console.log(colorize(file_contents))
+    console.log('evaluating...'.cyan)
+    file_contents.split('\n').forEach((line) => { addLine(line) })
+    startEvaluate(multilineBuffer)
+  } catch(e) {
+    console.log(e)
+  }
+}
+
 function getSource(name: string) {
   let declarations = getDeclarations()
   for (let file in declarations) {
@@ -308,6 +322,10 @@ export function repl(prompt: string) {
     }
     if (/^:paste/.test(code) && !multilineBuffer) {
       return enterPasteMode()
+    }
+    if (/^:load/.test(code) && !multilineBuffer) {
+      loadFile(code.split(' ')[1])
+      return repl(prompt)
     }
     if (argv.dere && /^:baka/.test(code)) {
       defaultPrompt   = 'ξ(ﾟ⊿ﾟ)ξ> '
