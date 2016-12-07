@@ -190,12 +190,11 @@ export function getType(name: string, detailed: boolean): string {
 }
 
 export function getDiagnostics(code: string): string[] {
-  let allDiagnostics = service.getCompilerOptionsDiagnostics()
-    .concat(service.getSemanticDiagnostics(DUMMY_FILE))
-
   let fallback = acceptedCodes
   acceptedCodes += code
   versionCounter++
+  let allDiagnostics = service.getCompilerOptionsDiagnostics()
+    .concat(service.getSemanticDiagnostics(DUMMY_FILE))
   let ret = allDiagnostics.map(diagnostic => {
     let message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n')
     return message
