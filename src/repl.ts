@@ -233,15 +233,23 @@ function enterPasteMode() {
 
 function loadFile(filename: string) {
   try {
-    console.log(`// loading file ${filename}`.cyan)
-    let file_contents: string = fs.readFileSync(filename, 'utf8')
-    console.log(colorize(file_contents))
-    console.log('evaluating...'.cyan)
-    file_contents.split('\n').forEach((line) => { addLine(line) })
-    startEvaluate(multilineBuffer)
+    let filePath = path.resolve(filename)
+    let fileContents: string = fs.readFileSync(filePath, 'utf8')
+    if (verbose) {
+      console.log(`loading file: ${filePath}`.cyan)
+      console.log(colorize(fileContents))
+      console.log('evaluating...'.cyan)
+    }
+    startEvaluate(fileContents)
   } catch(e) {
     console.log(e)
   }
+}
+
+function loadFiles(filenames: string[]) {
+  filenames.forEach((filename) => {
+    loadFile(filename)
+  })
 }
 
 function getSource(name: string) {
@@ -324,7 +332,12 @@ export function repl(prompt: string) {
       return enterPasteMode()
     }
     if (/^:load/.test(code) && !multilineBuffer) {
-      loadFile(code.split(' ')[1])
+      let files = (code.match(/\S+/g) || []).slice(1);
+      if (files.length == 0) {
+        console.log(':load: pass list of filenames to load'.red)
+        return repl(prompt)
+      }
+      loadFiles(files)
       return repl(prompt)
     }
     if (argv.dere && /^:baka/.test(code)) {
