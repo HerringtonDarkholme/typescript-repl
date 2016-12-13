@@ -246,12 +246,6 @@ function loadFile(filename: string) {
   }
 }
 
-function loadFiles(filenames: string[]) {
-  filenames.forEach((filename) => {
-    loadFile(filename)
-  })
-}
-
 function getSource(name: string) {
   let declarations = getDeclarations()
   for (let file in declarations) {
@@ -332,12 +326,12 @@ export function repl(prompt: string) {
       return enterPasteMode()
     }
     if (/^:load/.test(code) && !multilineBuffer) {
-      let files = (code.match(/\S+/g) || []).slice(1);
-      if (files.length == 0) {
-        console.log(':load: pass list of filenames to load'.red)
+      let filename = code.split(' ')[1];
+      if (!filename) {
+        console.log(':load: file name expected'.red)
         return repl(prompt)
       }
-      loadFiles(files)
+      loadFile(filename)
       return repl(prompt)
     }
     if (argv.dere && /^:baka/.test(code)) {
