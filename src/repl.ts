@@ -234,7 +234,7 @@ function enterPasteMode() {
 function loadFile(filename: string) {
   try {
     let filePath = path.resolve(filename)
-    let fileContents: string = fs.readFileSync(filePath, 'utf8')
+    let fileContents = fs.readFileSync(filePath, 'utf8')
     if (verbose) {
       console.log(`loading file: ${filePath}`.cyan)
       console.log(colorize(fileContents))
