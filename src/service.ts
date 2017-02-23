@@ -138,7 +138,7 @@ function collectDeclaration(sourceFile: any): any {
   let decls = sourceFile.getNamedDeclarations()
   var ret: any = {}
   for (let decl in decls) {
-    ret[decl] = decls[decl].map((t: any) => t.name)
+    ret[decl] = Array.isArray(decls[decl]) && decls[decl].map((t: any) => t.name)
   }
   return ret
 }
