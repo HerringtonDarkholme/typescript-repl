@@ -41,6 +41,7 @@ const OVERRIDE_OPTIONS: ts.CompilerOptions = {
   module: ts.ModuleKind.CommonJS,
   noEmitHelpers: true,
   noUnusedLocals: false,
+  sourceMap: false,
   noEmit: false
 }
 
