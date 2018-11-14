@@ -36,9 +36,9 @@
   "devDependencies": {
     "@types/colors": "^0.6.33",
     "@types/diff": "0.0.31",
-    "typescript": "^2.2.0-dev.20161128"
+    "typescript": "^3.1.0"
   },
   "peerDependencies": {
-    "typescript": ">=2.0.0"
+    "typescript": ">=3.0.0"
   }
 }

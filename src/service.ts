@@ -155,7 +155,7 @@ export function completer(line: string) {
     candidates = candidates.map(c => ':' + c).filter(c => c.indexOf(line) >= 0)
     return [candidates, line.trim()]
   }
-  let completions = service.getCompletionsAtPosition(DUMMY_FILE, acceptedCodes.length)
+  let completions = service.getCompletionsAtPosition(DUMMY_FILE, acceptedCodes.length, undefined)
   if (!completions) {
     acceptedCodes = originalCodes
     return [[], line]

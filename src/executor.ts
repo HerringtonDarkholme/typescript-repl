@@ -53,7 +53,7 @@ function compile(fileNames: string[], options: ts.CompilerOptions): number {
     allDiagnostics.forEach(diagnostic => {
       var message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n');
       if (!diagnostic.file) return console.log(message)
-      var { line, character } = diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start);
+      var { line, character } = diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start!);
       console.log(`${diagnostic.file.fileName} (${line + 1},${character + 1}): ${message}`);
     });
 
