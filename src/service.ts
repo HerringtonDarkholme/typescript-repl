@@ -92,6 +92,9 @@ var serviceHost: ts.LanguageServiceHost = {
   getCurrentDirectory: () => CWD,
   getDirectories: ts.sys.getDirectories,
   directoryExists: ts.sys.directoryExists,
+  fileExists: ts.sys.fileExists,
+  readFile: ts.sys.readFile,
+  readDirectory: ts.sys.readDirectory,
   getDefaultLibFileName: options => ts.getDefaultLibFilePath(options)
 }
 
