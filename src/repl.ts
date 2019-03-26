@@ -28,6 +28,7 @@ var options = require('optimist')
   .alias('v', 'verbose')
   .describe('v', 'Print compiled javascript before evaluating.')
   .describe('dere', "I-its's not like I'm an option so DON'T GET THE WRONG IDEA!")
+  .describe('ignore-undefined', 'Do not output the return value of a command if it evaluates to undefined')
 
 var argv = options.argv
 var verbose = argv.verbose
@@ -174,7 +175,10 @@ function startEvaluate(code: string) {
   }
   try  {
     var result = vm.runInContext(current, context);
-    console.log(util.inspect(result, false, 2, true));
+
+    if (result === undefined && !argv['ignore-undefined']) {
+      console.log(util.inspect(result, false, 2, true))
+    }
   } catch (e) {
     console.log(e.stack);
   }
