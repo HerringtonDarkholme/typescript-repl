@@ -1,7 +1,7 @@
 {
   "name": "tsun",
   "preferGlobal": true,
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "TSUN: a repl for TypeScript Upgraded Node",
   "bin": "./bin/tsun",
   "dependencies": {
