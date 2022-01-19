@@ -17,7 +17,7 @@ import {assign} from './util'
 
 var Module = require('module')
 
-import 'colors'
+import * as colors from 'colors'
 
 // node-color-readline blows up in non-TTY envs
 const readline = (process.stdout as tty.WriteStream).isTTY ? readlineTTY : readlineNoTTY
@@ -161,7 +161,7 @@ function startEvaluate(code: string) {
   multilineBuffer = ''
   let allDiagnostics = getDiagnostics(code)
   if (allDiagnostics.length) {
-    console.warn(allDiagnostics.join('\n').bold.red)
+    console.warn(colors.bold(allDiagnostics.join('\n').red))
     if (defaultPrompt != '> ') {
       console.log('')
       console.log(defaultPrompt, 'URUSAI URUSAI URUSAI'.magenta)

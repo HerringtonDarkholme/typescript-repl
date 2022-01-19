@@ -1,12 +1,12 @@
 {
   "name": "tsun",
   "preferGlobal": true,
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "TSUN: a repl for TypeScript Upgraded Node",
   "bin": "./bin/tsun",
   "dependencies": {
     "colors": "^1.0.3",
-    "diff": "^2.2.3",
+    "diff": "^3.5.0",
     "node-color-readline": "^1.0.1",
     "optimist": "^0.6.1",
     "temp": "^0.8.1",
