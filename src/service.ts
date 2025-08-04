@@ -116,7 +116,7 @@ export var getDeclarations = (function() {
 })()
 
 function getDeclarationFiles() {
-  var libPaths = [path.resolve(__dirname, '../../node_modules/@types/node/index.d.ts')]
+  var libPaths = [require.resolve('@types/node/index.d.ts')]
   try {
     let typings = path.join(process.cwd(), './typings')
     let dirs = readdirSync(typings)
